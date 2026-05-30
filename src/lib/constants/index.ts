@@ -35,25 +35,29 @@ export function isPublicPath(pathname: string): boolean {
 export const CLUB_ROLES = ["admin", "staff"] as const;
 export type ClubRole = (typeof CLUB_ROLES)[number];
 
-/** 실력 등급(높은 순) ↔ 내부 숫자값. DB는 smallint(1~5)로 저장하고 UI에서 등급으로 표시. */
-export const SKILL_GRADES = ["S", "A", "B", "C", "D"] as const;
+/** 실력 등급(높은 순) ↔ 내부 숫자값. DB는 smallint(1~7)로 저장하고 UI에서 등급으로 표시. */
+export const SKILL_GRADES = ["S", "A", "B", "C", "D", "E", "F"] as const;
 export type SkillGrade = (typeof SKILL_GRADES)[number];
 export const SKILL_VALUE: Record<SkillGrade, number> = {
-  S: 5,
-  A: 4,
-  B: 3,
-  C: 2,
-  D: 1,
+  S: 7,
+  A: 6,
+  B: 5,
+  C: 4,
+  D: 3,
+  E: 2,
+  F: 1,
 };
 export const GRADE_BY_VALUE: Record<number, SkillGrade> = {
-  5: "S",
-  4: "A",
-  3: "B",
-  2: "C",
-  1: "D",
+  7: "S",
+  6: "A",
+  5: "B",
+  4: "C",
+  3: "D",
+  2: "E",
+  1: "F",
 };
-/** 실력 미상(게스트 등) 기본값 = B */
-export const DEFAULT_SKILL_VALUE = 3;
+/** 실력 미상(게스트 등) 기본값 = C (중간) */
+export const DEFAULT_SKILL_VALUE = 4;
 
 /** 자동 배정 팀 구성 모드. */
 export const COMPOSITIONS = ["free", "mens", "womens", "mixed"] as const;

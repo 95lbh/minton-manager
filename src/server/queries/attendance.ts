@@ -37,7 +37,9 @@ export async function getAttendanceRecords(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("attendance_records")
-    .select("*, member:club_members(id, name, gender, level)")
+    .select(
+      "*, member:club_members(id, name, gender, level)",
+    )
     .eq("session_id", sessionId)
     .order("checked_in_at", { ascending: true });
 

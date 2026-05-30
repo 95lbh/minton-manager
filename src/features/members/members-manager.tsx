@@ -3,14 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,7 +40,7 @@ import {
 import {
   createMember,
   updateMember,
-  setMemberStatus,
+  deleteMember,
 } from "@/server/mutations/members";
 import type { ClubMember } from "@/types/db";
 
@@ -48,17 +49,17 @@ const NONE = "none";
 interface FormState {
   id?: string;
   name: string;
-  gender: string;
+  gender: GenderValue;
   level: string; // SKILL_VALUE 문자열 또는 NONE
-  phone: string;
 }
 
-const EMPTY: FormState = { name: "", gender: NONE, level: NONE, phone: "" };
+const EMPTY: FormState = { name: "", gender: "none", level: NONE };
 
 export function MembersManager({ members }: { members: ClubMember[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [deleting, setDeleting] = useState<ClubMember | null>(null);
   const [pending, startTransition] = useTransition();
 
   const openCreate = () => {
@@ -70,9 +71,8 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     setForm({
       id: m.id,
       name: m.name,
-      gender: m.gender ?? NONE,
+      gender: (m.gender as GenderValue) ?? "none",
       level: m.level ? String(m.level) : NONE,
-      phone: m.phone ?? "",
     });
     setOpen(true);
   };
@@ -85,9 +85,8 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     const fd = new FormData();
     if (form.id) fd.set("id", form.id);
     fd.set("name", form.name.trim());
-    fd.set("gender", form.gender);
-    fd.set("level", form.level);
-    fd.set("phone", form.phone.trim());
+    fd.set("gender", form.gender === "none" ? "" : form.gender);
+    fd.set("level", form.level === NONE ? "" : form.level);
 
     startTransition(async () => {
       const res = form.id ? await updateMember(fd) : await createMember(fd);
@@ -101,12 +100,13 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     });
   };
 
-  const toggleStatus = (m: ClubMember) => {
-    const next = m.status === "active" ? "inactive" : "active";
+  const confirmDelete = () => {
+    if (!deleting) return;
     startTransition(async () => {
-      const res = await setMemberStatus(m.id, next);
+      const res = await deleteMember(deleting.id);
       if (res.ok) {
-        toast.success(next === "active" ? "활성화했습니다." : "비활성화했습니다.");
+        toast.success("삭제되었습니다.");
+        setDeleting(null);
         router.refresh();
       } else {
         toast.error(res.error.message);
@@ -129,16 +129,14 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
               <TableHead>이름</TableHead>
               <TableHead className="w-16">성별</TableHead>
               <TableHead className="w-16">등급</TableHead>
-              <TableHead>연락처</TableHead>
-              <TableHead className="w-20">상태</TableHead>
-              <TableHead className="w-32 text-right">관리</TableHead>
+              <TableHead className="w-28 text-right">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {members.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={4}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   아직 회원이 없습니다. “회원 추가”로 시작하세요.
@@ -146,18 +144,10 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
               </TableRow>
             )}
             {members.map((m) => (
-              <TableRow key={m.id} className={m.status !== "active" ? "opacity-50" : ""}>
+              <TableRow key={m.id}>
                 <TableCell className="font-medium">{m.name}</TableCell>
                 <TableCell>{m.gender ? GENDER_LABEL[m.gender] : "-"}</TableCell>
                 <TableCell>{m.level ? GRADE_BY_VALUE[m.level] : "-"}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {m.phone ?? "-"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={m.status === "active" ? "default" : "secondary"}>
-                    {m.status === "active" ? "활성" : "비활성"}
-                  </Badge>
-                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
@@ -171,10 +161,10 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleStatus(m)}
+                      onClick={() => setDeleting(m)}
                       disabled={pending}
                     >
-                      {m.status === "active" ? "비활성" : "활성"}
+                      <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </div>
                 </TableCell>
@@ -184,6 +174,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
         </Table>
       </div>
 
+      {/* 추가/수정 다이얼로그 */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -200,53 +191,31 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                 maxLength={30}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>성별</Label>
-                <Select
-                  value={form.gender}
-                  onValueChange={(v) => setForm({ ...form, gender: v ?? NONE })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>미지정</SelectItem>
-                    <SelectItem value="male">남</SelectItem>
-                    <SelectItem value="female">여</SelectItem>
-                    <SelectItem value="other">기타</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>등급</Label>
-                <Select
-                  value={form.level}
-                  onValueChange={(v) => setForm({ ...form, level: v ?? NONE })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>미지정</SelectItem>
-                    {SKILL_GRADES.map((g) => (
-                      <SelectItem key={g} value={String(SKILL_VALUE[g])}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>성별</Label>
+              <GenderToggle
+                value={form.gender}
+                onChange={(v) => setForm({ ...form, gender: v })}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="m-phone">연락처</Label>
-              <Input
-                id="m-phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="선택"
-                maxLength={20}
-              />
+              <Label>등급</Label>
+              <Select
+                value={form.level}
+                onValueChange={(v) => setForm({ ...form, level: v ?? NONE })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>미지정</SelectItem>
+                  {SKILL_GRADES.map((g) => (
+                    <SelectItem key={g} value={String(SKILL_VALUE[g])}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -255,6 +224,31 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
             </Button>
             <Button onClick={submit} disabled={pending}>
               {pending ? "저장 중…" : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 삭제 확인 */}
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>회원 삭제</DialogTitle>
+            <DialogDescription>
+              “{deleting?.name}” 회원을 삭제할까요? 과거 출석·게임 기록은
+              보존됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={pending}
+            >
+              삭제
             </Button>
           </DialogFooter>
         </DialogContent>

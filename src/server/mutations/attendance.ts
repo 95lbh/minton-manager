@@ -65,16 +65,23 @@ export async function checkInMember(
   return { ok: true };
 }
 
-/** 게스트(비회원) 출석 추가. */
+/** 게스트(비회원) 출석 추가. 이름 + 성별/실력(선택). */
 export async function addGuest(
   sessionId: string,
-  guestName: string,
+  guest: { name: string; gender?: "male" | "female" | null; level?: number | null },
 ): Promise<ActionResult> {
-  const name = guestName.trim();
+  const name = guest.name.trim();
   if (!name) return { ok: false, error: { message: "게스트 이름을 입력하세요." } };
 
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const gender =
+    guest.gender === "male" || guest.gender === "female" ? guest.gender : null;
+  const level =
+    typeof guest.level === "number" && guest.level >= 1 && guest.level <= 7
+      ? guest.level
+      : null;
 
   const supabase = await createClient();
   const { error } = await supabase.from("attendance_records").insert({
@@ -82,6 +89,8 @@ export async function addGuest(
     club_id: club.id,
     member_id: null,
     guest_name: name,
+    guest_gender: gender,
+    guest_level: level,
     is_guest: true,
   });
 

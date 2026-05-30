@@ -3,19 +3,33 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, UserPlus, X, Lock, Unlock } from "lucide-react";
+import { Search, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   checkInMember,
   addGuest,
   removeRecord,
-  setSessionStatus,
 } from "@/server/mutations/attendance";
-import { GENDER_LABEL, GRADE_BY_VALUE } from "@/lib/constants";
+import {
+  GENDER_LABEL,
+  GRADE_BY_VALUE,
+  SKILL_GRADES,
+  SKILL_VALUE,
+} from "@/lib/constants";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
+
+const NONE = "none";
 
 export function AttendanceManager({
   session,
@@ -29,8 +43,9 @@ export function AttendanceManager({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [guestName, setGuestName] = useState("");
+  const [guestGender, setGuestGender] = useState<GenderValue>("none");
+  const [guestLevel, setGuestLevel] = useState<string>(NONE);
   const [pending, startTransition] = useTransition();
-  const closed = session.status === "closed";
 
   // 이미 출석한 회원 id 집합
   const attendedMemberIds = useMemo(
@@ -38,7 +53,7 @@ export function AttendanceManager({
     [records],
   );
 
-  // 출석 후보(미출석 active 회원) — 검색 필터
+  // 출석 후보(미출석 회원) — 검색 필터
   const candidates = useMemo(() => {
     const q = query.trim().toLowerCase();
     return members
@@ -46,8 +61,10 @@ export function AttendanceManager({
       .filter((m) => (q ? m.name.toLowerCase().includes(q) : true));
   }, [members, attendedMemberIds, query]);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
-    successMsg: string) => {
+  const run = (
+    fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
+    successMsg: string,
+  ) => {
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
@@ -62,43 +79,35 @@ export function AttendanceManager({
   const memberCount = records.filter((r) => !r.is_guest).length;
   const guestCount = records.filter((r) => r.is_guest).length;
 
+  const submitGuest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestName.trim()) {
+      toast.error("게스트 이름을 입력하세요.");
+      return;
+    }
+    run(
+      () =>
+        addGuest(session.id, {
+          name: guestName,
+          gender: guestGender === "none" ? null : guestGender,
+          level: guestLevel === NONE ? null : Number(guestLevel),
+        }),
+      "게스트를 추가했습니다.",
+    );
+    setGuestName("");
+    setGuestGender("none");
+    setGuestLevel(NONE);
+  };
+
   return (
     <div className="space-y-6">
-      {/* 상태 바 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Badge variant={closed ? "secondary" : "default"}>
-            {closed ? "마감됨" : "진행 중"}
-          </Badge>
-          <span className="text-sm">
-            출석 <b>{records.length}</b>명
-            <span className="text-muted-foreground">
-              {" "}
-              (회원 {memberCount} · 게스트 {guestCount})
-            </span>
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={() =>
-            run(
-              () => setSessionStatus(session.id, closed ? "open" : "closed"),
-              closed ? "세션을 다시 열었습니다." : "세션을 마감했습니다.",
-            )
-          }
-        >
-          {closed ? (
-            <>
-              <Unlock className="size-4" />세션 재개
-            </>
-          ) : (
-            <>
-              <Lock className="size-4" />세션 마감
-            </>
-          )}
-        </Button>
+      {/* 요약 */}
+      <div className="rounded-lg border bg-card px-4 py-3 text-sm">
+        출석 <b>{records.length}</b>명
+        <span className="text-muted-foreground">
+          {" "}
+          (회원 {memberCount} · 게스트 {guestCount})
+        </span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -115,9 +124,8 @@ export function AttendanceManager({
             <ul className="flex flex-wrap gap-2">
               {records.map((r) => {
                 const name = r.is_guest ? r.guest_name : r.member?.name;
-                const grade = r.member?.level
-                  ? GRADE_BY_VALUE[r.member.level]
-                  : null;
+                const level = r.is_guest ? r.guest_level : r.member?.level;
+                const grade = level ? GRADE_BY_VALUE[level] : null;
                 return (
                   <li key={r.id}>
                     <div className="flex items-center gap-2 rounded-full border bg-card py-1.5 pl-3 pr-1.5">
@@ -133,7 +141,9 @@ export function AttendanceManager({
                       <button
                         type="button"
                         disabled={pending}
-                        onClick={() => run(() => removeRecord(r.id), "출석을 취소했습니다.")}
+                        onClick={() =>
+                          run(() => removeRecord(r.id), "출석을 취소했습니다.")
+                        }
                         className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
                         aria-label="출석 취소"
                       >
@@ -148,7 +158,7 @@ export function AttendanceManager({
         </section>
 
         {/* 출석 추가 */}
-        <section className={closed ? "pointer-events-none opacity-50" : ""}>
+        <section>
           <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
             회원 출석 체크
           </h2>
@@ -192,30 +202,46 @@ export function AttendanceManager({
           </ul>
 
           {/* 게스트 추가 */}
-          <div className="mt-4">
-            <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
-              게스트 추가
-            </h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!guestName.trim()) {
-                  toast.error("게스트 이름을 입력하세요.");
-                  return;
-                }
-                run(() => addGuest(session.id, guestName), "게스트를 추가했습니다.");
-                setGuestName("");
-              }}
-              className="flex gap-2"
-            >
+          <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+            <h3 className="mb-3 text-sm font-semibold">게스트 추가</h3>
+            <form onSubmit={submitGuest} className="space-y-3">
               <Input
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                placeholder="비회원 이름"
+                placeholder="비회원 이름 *"
                 maxLength={30}
               />
-              <Button type="submit" variant="secondary" disabled={pending}>
-                <UserPlus className="size-4" />추가
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">성별</Label>
+                  <GenderToggle
+                    value={guestGender}
+                    onChange={setGuestGender}
+                    disabled={pending}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">등급</Label>
+                  <Select
+                    value={guestLevel}
+                    onValueChange={(v) => setGuestLevel(v ?? NONE)}
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>미지정</SelectItem>
+                      {SKILL_GRADES.map((g) => (
+                        <SelectItem key={g} value={String(SKILL_VALUE[g])}>
+                          {g}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button type="submit" variant="secondary" disabled={pending} className="w-full">
+                <UserPlus className="size-4" />게스트 추가
               </Button>
             </form>
           </div>

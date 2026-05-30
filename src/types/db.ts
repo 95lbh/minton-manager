@@ -69,6 +69,8 @@ export interface AttendanceRecord {
   club_id: string;
   member_id: string | null;
   guest_name: string | null;
+  guest_gender: MemberGender | null;
+  guest_level: number | null;
   is_guest: boolean;
   checked_in_at: string;
   status: string;

@@ -49,7 +49,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **클라이언트 매니저**(`features/<domain>/*-manager.tsx`)는 `useTransition`으로 액션 호출 → 성공/실패를 `sonner` 토스트로, 성공 시 `router.refresh()`. 패턴 예시: [features/members/members-manager.tsx](src/features/members/members-manager.tsx), [features/courts/courts-manager.tsx](src/features/courts/courts-manager.tsx).
 - **활성 클럽**: `active_club_id` 쿠키로 관리. 모든 도메인 쿼리는 [getActiveClub()](src/server/queries/clubs.ts)으로 `club_id`를 얻어 필터. 클럽 없으면 `(app)/layout.tsx`가 `/onboarding`으로 보냄.
 - **클럽 생성**은 `clubs`+`club_admins` 두 테이블을 함께 써야 하므로 **`create_club` RPC**(트랜잭션, [0002](supabase/migrations/0002_create_club_rpc.sql))로 처리. 여러 테이블 동시 변경/정합성 필요 시 RPC를 우선 고려.
-- **실력 등급**: DB는 `level` smallint(1~5), UI는 S/A/B/C/D. 변환은 [constants](src/lib/constants/index.ts)의 `SKILL_VALUE`/`GRADE_BY_VALUE`.
+- **실력 등급**: DB는 `level` smallint(1~7), UI는 **S/A/B/C/D/E/F**(S=7 … F=1). 변환은 [constants](src/lib/constants/index.ts)의 `SKILL_VALUE`/`GRADE_BY_VALUE`. 게스트도 성별/실력을 가짐(`attendance_records.guest_gender/guest_level`, 0003).
+- **성별 입력**은 셀렉트가 아니라 남/여 토글 버튼([components/ui/gender-toggle.tsx](src/components/ui/gender-toggle.tsx), 다시 누르면 해제). 등급은 셀렉트 유지.
+- **회원은 soft delete만** (활성/비활성 상태 개념 제거). `club_members.status`는 더 이상 UI에서 쓰지 않음.
 
 ### 마이그레이션 적용
 `supabase/migrations/*.sql`은 자동 적용되지 않는다. **Supabase SQL Editor에 수동 실행**한다(현재 CLI 미연결). 적용 여부는 `scripts/check-supabase.mjs`로 확인.

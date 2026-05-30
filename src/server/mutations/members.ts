@@ -14,7 +14,7 @@ function parseGender(v: FormDataEntryValue | null): MemberGender | null {
 
 function parseLevel(v: FormDataEntryValue | null): number | null {
   const n = Number(v);
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+  return Number.isInteger(n) && n >= 1 && n <= 7 ? n : null;
 }
 
 /** 회원 등록. */
@@ -31,7 +31,6 @@ export async function createMember(formData: FormData): Promise<ActionResult> {
     name,
     gender: parseGender(formData.get("gender")),
     level: parseLevel(formData.get("level")),
-    phone: String(formData.get("phone") ?? "").trim() || null,
   });
 
   if (error)
@@ -55,7 +54,6 @@ export async function updateMember(formData: FormData): Promise<ActionResult> {
       name,
       gender: parseGender(formData.get("gender")),
       level: parseLevel(formData.get("level")),
-      phone: String(formData.get("phone") ?? "").trim() || null,
     })
     .eq("id", id);
 
@@ -66,19 +64,16 @@ export async function updateMember(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** 회원 활성/비활성 토글. */
-export async function setMemberStatus(
-  id: string,
-  status: "active" | "inactive",
-): Promise<ActionResult> {
+/** 회원 삭제 (soft delete). 과거 게임/출석 기록은 보존된다. */
+export async function deleteMember(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("club_members")
-    .update({ status })
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error)
-    return { ok: false, error: { message: "상태 변경에 실패했습니다.", detail: error.message } };
+    return { ok: false, error: { message: "회원 삭제에 실패했습니다.", detail: error.message } };
 
   revalidatePath(ROUTES.members);
   return { ok: true };

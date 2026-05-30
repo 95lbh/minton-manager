@@ -54,3 +54,13 @@ if (rpcErr?.code === "PGRST202") {
   // 함수는 있으나 비인증/빈이름으로 막힌 것(정상). RLS/인증 에러는 함수 존재를 의미.
   console.log("\n✅ create_club RPC 존재 (0002 적용됨)");
 }
+
+// 4) 0003: attendance_records.guest_gender 컬럼 존재 여부
+const { error: colErr } = await sb
+  .from("attendance_records")
+  .select("guest_gender, guest_level", { head: true });
+if (colErr && /guest_gender|column/.test(colErr.message)) {
+  console.log("❌ 게스트 성별/실력 컬럼 없음 — supabase/migrations/0003_attendance_guest_and_grade.sql 실행 필요");
+} else {
+  console.log("✅ 게스트 성별/실력 컬럼 존재 (0003 적용됨)");
+}

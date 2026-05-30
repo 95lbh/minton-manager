@@ -224,6 +224,10 @@ tournament_results(id, match_id, winner_side, score_a, score_b)
 ```
 RLS는 운영 데이터와 동일 패턴(`is_club_member`).
 
+## 8b. 적용된 추가 마이그레이션
+- `0002_create_club_rpc.sql` — 클럽 생성 트랜잭션 RPC.
+- `0003_attendance_guest_and_grade.sql` — `attendance_records`에 `guest_gender`, `guest_level` 추가. 실력 등급은 1~7(S~F)로 사용(컬럼은 smallint 그대로).
+
 ## 9. 마이그레이션 순서
 1. enum + `set_updated_at`
 2. profiles, clubs, club_admins + 헬퍼 함수
