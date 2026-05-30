@@ -97,6 +97,7 @@ Supabase 환경변수(`.env.local`)가 없으면 dev 서버는 뜨되 인증은 
 - 연동 점검: `node --env-file=.env.local scripts/check-supabase.mjs` — 환경변수/Auth/Google provider/테이블 접근을 한 번에 확인(비밀값 미출력).
 - ⚠️ `NEXT_PUBLIC_SUPABASE_URL`은 **프로젝트 기본 URL**(`https://xxx.supabase.co`)이어야 한다. Data API 엔드포인트(`.../rest/v1/`)를 넣으면 안 됨.
 - `.env.local` 변경 후에는 dev 서버를 **재시작**해야 반영된다.
+- ⚠️ **dev 서버가 떠 있는 동안 `npm run build`나 `npm install`을 돌리지 말 것.** dev(`next dev`)와 production build가 같은 `.next`를 두고 충돌해 캐시가 꼬이면 기본 템플릿/빈 페이지가 서빙된다. 증상이 보이면: dev 서버 종료 → `rm -rf .next` → `npm run dev` 재시작 → 브라우저 강력 새로고침(Ctrl+Shift+R).
 
 ## Next.js 16 주의 (중요)
 
