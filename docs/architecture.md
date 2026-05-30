@@ -27,7 +27,7 @@
 
 ## 3. 인증 / 권한 흐름
 
-- 로그인 = **Google OAuth(Supabase Auth)**. 로그인 주체는 **운영자/스태프뿐**.
+- 로그인 = **Google OAuth(Supabase Auth)** 우선. **추후 Naver / Kakao provider 추가** 예정(로그인 화면을 provider 목록 기반으로 구성해 확장 용이하게). 로그인 주체는 **운영자/스태프뿐**.
 - **Proxy**(`src/proxy.ts`, Next 16에서 middleware의 새 이름)가 매 요청 세션을 갱신하고 보호 경로를 가드. 공개 경로(`/login`, `/auth`, `/`)를 제외한 모든 경로가 보호 대상이며, 2차로 `(app)/layout.tsx` 서버 컴포넌트가 `getUser()`로 재확인 후 미로그인 시 `redirect`.
 - 권한 매핑:
   - `profiles` (auth user 1:1) — 표시 정보
