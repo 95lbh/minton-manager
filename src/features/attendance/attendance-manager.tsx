@@ -25,6 +25,7 @@ import {
   GRADE_BY_VALUE,
   SKILL_GRADES,
   SKILL_VALUE,
+  type SkillGrade,
 } from "@/lib/constants";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
@@ -44,7 +45,7 @@ export function AttendanceManager({
   const [query, setQuery] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
-  const [guestLevel, setGuestLevel] = useState<string>(NONE);
+  const [guestLevel, setGuestLevel] = useState<string>(NONE); // 등급 문자(S~F) 또는 NONE
   const [pending, startTransition] = useTransition();
 
   // 이미 출석한 회원 id 집합
@@ -90,7 +91,7 @@ export function AttendanceManager({
         addGuest(session.id, {
           name: guestName,
           gender: guestGender === "none" ? null : guestGender,
-          level: guestLevel === NONE ? null : Number(guestLevel),
+          level: guestLevel === NONE ? null : SKILL_VALUE[guestLevel as SkillGrade],
         }),
       "게스트를 추가했습니다.",
     );
@@ -232,7 +233,7 @@ export function AttendanceManager({
                     <SelectContent>
                       <SelectItem value={NONE}>미지정</SelectItem>
                       {SKILL_GRADES.map((g) => (
-                        <SelectItem key={g} value={String(SKILL_VALUE[g])}>
+                        <SelectItem key={g} value={g}>
                           {g}
                         </SelectItem>
                       ))}

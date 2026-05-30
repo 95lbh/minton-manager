@@ -36,6 +36,7 @@ import {
   SKILL_GRADES,
   SKILL_VALUE,
   GRADE_BY_VALUE,
+  type SkillGrade,
 } from "@/lib/constants";
 import {
   createMember,
@@ -50,7 +51,7 @@ interface FormState {
   id?: string;
   name: string;
   gender: GenderValue;
-  level: string; // SKILL_VALUE 문자열 또는 NONE
+  level: string; // 등급 문자(S~F) 또는 NONE
 }
 
 const EMPTY: FormState = { name: "", gender: "none", level: NONE };
@@ -72,7 +73,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       id: m.id,
       name: m.name,
       gender: (m.gender as GenderValue) ?? "none",
-      level: m.level ? String(m.level) : NONE,
+      level: m.level ? GRADE_BY_VALUE[m.level] : NONE,
     });
     setOpen(true);
   };
@@ -86,7 +87,10 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     if (form.id) fd.set("id", form.id);
     fd.set("name", form.name.trim());
     fd.set("gender", form.gender === "none" ? "" : form.gender);
-    fd.set("level", form.level === NONE ? "" : form.level);
+    fd.set(
+      "level",
+      form.level === NONE ? "" : String(SKILL_VALUE[form.level as SkillGrade]),
+    );
 
     startTransition(async () => {
       const res = form.id ? await updateMember(fd) : await createMember(fd);
@@ -210,7 +214,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                 <SelectContent>
                   <SelectItem value={NONE}>미지정</SelectItem>
                   {SKILL_GRADES.map((g) => (
-                    <SelectItem key={g} value={String(SKILL_VALUE[g])}>
+                    <SelectItem key={g} value={g}>
                       {g}
                     </SelectItem>
                   ))}
