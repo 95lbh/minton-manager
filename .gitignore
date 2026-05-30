@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local logs (dev/build 검증용)
+*.log
+
+# Claude Code 로컬 개인 설정 (공유 설정은 .claude/settings.json)
+.claude/settings.local.json

@@ -28,7 +28,7 @@
 ## 3. 인증 / 권한 흐름
 
 - 로그인 = **Google OAuth(Supabase Auth)**. 로그인 주체는 **운영자/스태프뿐**.
-- 미들웨어(`middleware.ts`)가 세션을 확인하고 `/dashboard` 등 보호 경로를 가드.
+- **Proxy**(`src/proxy.ts`, Next 16에서 middleware의 새 이름)가 매 요청 세션을 갱신하고 보호 경로를 가드. 공개 경로(`/login`, `/auth`, `/`)를 제외한 모든 경로가 보호 대상이며, 2차로 `(app)/layout.tsx` 서버 컴포넌트가 `getUser()`로 재확인 후 미로그인 시 `redirect`.
 - 권한 매핑:
   - `profiles` (auth user 1:1) — 표시 정보
   - `club_admins(club_id, user_id, role)` — 어떤 사용자가 어떤 클럽의 admin/staff인지
@@ -42,13 +42,15 @@
 ```txt
 src/
   app/
-    (auth)/login/                  # 로그인
-    (app)/                         # 보호 영역 (운영자/스태프)
+    login/                         # 로그인 (공개)
+    auth/callback/                 # OAuth 콜백 (route handler)
+    (app)/                         # 보호 영역 (운영자/스태프). 라우트 그룹 → URL 접두사 없음
+      layout.tsx                   #   인증 가드 + 공통 셸
       dashboard/
-      clubs/  members/  attendance/  courts/  games/  stats/  settings/
+      members/  attendance/  courts/  games/  stats/  settings/
       tournaments/                 # 대회 모드 (별도)
-    api/                           # Route Handlers (필요 시)
-    layout.tsx  globals.css
+    layout.tsx  page.tsx  globals.css
+  proxy.ts                         # Next 16 proxy (구 middleware)
   components/
     ui/                            # shadcn/ui
     layout/                        # 헤더/네비/쉘
