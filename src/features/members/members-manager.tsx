@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
+import { GradeToggle, type GradeValue } from "@/components/ui/grade-toggle";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -33,7 +27,6 @@ import {
 } from "@/components/ui/table";
 import {
   GENDER_LABEL,
-  SKILL_GRADES,
   SKILL_VALUE,
   GRADE_BY_VALUE,
   type SkillGrade,
@@ -45,16 +38,14 @@ import {
 } from "@/server/mutations/members";
 import type { ClubMember } from "@/types/db";
 
-const NONE = "none";
-
 interface FormState {
   id?: string;
   name: string;
   gender: GenderValue;
-  level: string; // 등급 문자(S~F) 또는 NONE
+  level: GradeValue; // 등급 문자(S~F) 또는 "none"
 }
 
-const EMPTY: FormState = { name: "", gender: "none", level: NONE };
+const EMPTY: FormState = { name: "", gender: "none", level: "none" };
 
 export function MembersManager({ members }: { members: ClubMember[] }) {
   const router = useRouter();
@@ -73,7 +64,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       id: m.id,
       name: m.name,
       gender: (m.gender as GenderValue) ?? "none",
-      level: m.level ? GRADE_BY_VALUE[m.level] : NONE,
+      level: m.level ? GRADE_BY_VALUE[m.level] : "none",
     });
     setOpen(true);
   };
@@ -89,7 +80,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     fd.set("gender", form.gender === "none" ? "" : form.gender);
     fd.set(
       "level",
-      form.level === NONE ? "" : String(SKILL_VALUE[form.level as SkillGrade]),
+      form.level === "none" ? "" : String(SKILL_VALUE[form.level]),
     );
 
     startTransition(async () => {
@@ -204,22 +195,10 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
             </div>
             <div className="space-y-2">
               <Label>등급</Label>
-              <Select
+              <GradeToggle
                 value={form.level}
-                onValueChange={(v) => setForm({ ...form, level: v ?? NONE })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>미지정</SelectItem>
-                  {SKILL_GRADES.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {g}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setForm({ ...form, level: v })}
+              />
             </div>
           </div>
           <DialogFooter>

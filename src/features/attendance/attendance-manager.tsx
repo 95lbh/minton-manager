@@ -8,29 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { GradeToggle, type GradeValue } from "@/components/ui/grade-toggle";
 import {
   checkInMember,
   addGuest,
   removeRecord,
 } from "@/server/mutations/attendance";
-import {
-  GENDER_LABEL,
-  GRADE_BY_VALUE,
-  SKILL_GRADES,
-  SKILL_VALUE,
-  type SkillGrade,
-} from "@/lib/constants";
+import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_VALUE } from "@/lib/constants";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
-
-const NONE = "none";
 
 export function AttendanceManager({
   session,
@@ -45,7 +31,7 @@ export function AttendanceManager({
   const [query, setQuery] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
-  const [guestLevel, setGuestLevel] = useState<string>(NONE); // 등급 문자(S~F) 또는 NONE
+  const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const [pending, startTransition] = useTransition();
 
   // 이미 출석한 회원 id 집합
@@ -212,34 +198,21 @@ export function AttendanceManager({
                 placeholder="비회원 이름 *"
                 maxLength={30}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">성별</Label>
-                  <GenderToggle
-                    value={guestGender}
-                    onChange={setGuestGender}
-                    disabled={pending}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">등급</Label>
-                  <Select
-                    value={guestLevel}
-                    onValueChange={(v) => setGuestLevel(v ?? NONE)}
-                  >
-                    <SelectTrigger className="h-10 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>미지정</SelectItem>
-                      {SKILL_GRADES.map((g) => (
-                        <SelectItem key={g} value={g}>
-                          {g}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">성별</Label>
+                <GenderToggle
+                  value={guestGender}
+                  onChange={setGuestGender}
+                  disabled={pending}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">등급</Label>
+                <GradeToggle
+                  value={guestLevel}
+                  onChange={setGuestLevel}
+                  disabled={pending}
+                />
               </div>
               <Button type="submit" variant="secondary" disabled={pending} className="w-full">
                 <UserPlus className="size-4" />게스트 추가
