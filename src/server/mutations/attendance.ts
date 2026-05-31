@@ -101,6 +101,25 @@ export async function addGuest(
   return { ok: true };
 }
 
+/** 대기자 상태 변경 (대기중/레슨중/집에감). */
+export async function setAttendeeStatus(
+  recordId: string,
+  status: "present" | "lesson" | "left",
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("attendance_records")
+    .update({ status })
+    .eq("id", recordId);
+
+  if (error)
+    return { ok: false, error: { message: "상태 변경에 실패했습니다.", detail: error.message } };
+
+  revalidatePath(ROUTES.attendance);
+  revalidatePath(ROUTES.games);
+  return { ok: true };
+}
+
 /** 출석 취소(레코드 삭제). */
 export async function removeRecord(recordId: string): Promise<ActionResult> {
   const supabase = await createClient();

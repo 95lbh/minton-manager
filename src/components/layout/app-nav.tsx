@@ -10,7 +10,6 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: ROUTES.attendance, label: "출석" },
   { href: ROUTES.games, label: "코트/게임" },
   { href: ROUTES.members, label: "회원" },
-  { href: ROUTES.courts, label: "코트관리" },
   { href: ROUTES.stats, label: "통계" },
   { href: ROUTES.tournaments, label: "대회" },
   { href: ROUTES.settings, label: "설정" },

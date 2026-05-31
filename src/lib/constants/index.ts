@@ -22,6 +22,15 @@ export const GENDER_LABEL: Record<string, string> = {
   other: "기타",
 };
 
+/** 출석자(대기자) 상태. present 만 코트 배정 가능. */
+export const ATTENDEE_STATUSES = ["present", "lesson", "left"] as const;
+export type AttendeeStatus = (typeof ATTENDEE_STATUSES)[number];
+export const ATTENDEE_STATUS_LABEL: Record<AttendeeStatus, string> = {
+  present: "대기중",
+  lesson: "레슨중",
+  left: "집에감",
+};
+
 /** 로그인 없이 접근 가능한 경로(접두사). 나머지는 모두 보호 경로. */
 export const PUBLIC_PATH_PREFIXES = ["/login", "/auth"] as const;
 

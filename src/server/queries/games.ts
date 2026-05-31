@@ -5,6 +5,8 @@ import type { Court, Game, MemberGender } from "@/types/db";
 /** 코트 화면에 필요한 한 명의 표시 정보(출석 레코드 기준). */
 export interface PoolPlayer extends PlayerState {
   isGuest: boolean;
+  /** 대기자 상태: present(대기중) / lesson(레슨중) / left(집에감) */
+  status: string;
 }
 
 /** 진행 중인 게임 + 참가자(표시정보). */
@@ -28,6 +30,7 @@ interface AttRow {
   guest_level: number | null;
   is_guest: boolean;
   checked_in_at: string;
+  status: string;
   member: {
     id: string;
     name: string;
@@ -75,7 +78,7 @@ export async function getCourtViewData(
     supabase
       .from("attendance_records")
       .select(
-        "id, member_id, guest_name, guest_gender, guest_level, is_guest, checked_in_at, member:club_members(id, name, gender, level)",
+        "id, member_id, guest_name, guest_gender, guest_level, is_guest, checked_in_at, status, member:club_members(id, name, gender, level)",
       )
       .eq("session_id", sessionId)
       .order("checked_in_at", { ascending: true }),
@@ -192,6 +195,7 @@ export async function getCourtViewData(
         lastPlayedSeq: lastSeq.get(r.id) ?? null,
         waitingSince: new Date(r.checked_in_at).getTime(),
         isGuest: r.is_guest,
+        status: r.status,
       };
     });
 

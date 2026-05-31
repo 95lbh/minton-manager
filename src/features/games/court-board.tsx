@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Square, Play, X, Check, Clock } from "lucide-react";
+import { Sparkles, Square, Play, X, Check, Clock, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,21 +13,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   GENDER_LABEL,
   GRADE_BY_VALUE,
   COMPOSITIONS,
   COMPOSITION_LABEL,
+  ATTENDEE_STATUSES,
+  ATTENDEE_STATUS_LABEL,
   type Composition,
+  type AttendeeStatus,
 } from "@/lib/constants";
 import { ElapsedTime } from "@/features/games/elapsed-time";
+import { recommendGame, type GameSize } from "@/server/services/assignment";
+import { startGame, endGame } from "@/server/mutations/games";
+import { addCourt, deleteCourt } from "@/server/mutations/courts";
+import { setAttendeeStatus } from "@/server/mutations/attendance";
+import type { CourtViewData, PoolPlayer } from "@/server/queries/games";
 
 const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
-import {
-  recommendGame,
-  type GameSize,
-} from "@/server/services/assignment";
-import { startGame, endGame } from "@/server/mutations/games";
-import type { CourtViewData, PoolPlayer } from "@/server/queries/games";
+
+const STATUS_BADGE: Record<string, string> = {
+  present: "",
+  lesson: "bg-blue-100 text-blue-700",
+  left: "bg-zinc-200 text-zinc-600",
+};
 
 export function CourtBoard({
   sessionId,
@@ -40,12 +54,9 @@ export function CourtBoard({
   const { courts, ongoing, pool, currentSeq, history } = data;
   const [pending, startTransition] = useTransition();
 
-  // 코트별 설정/선택 상태
   const [gameSize, setGameSize] = useState<Record<string, GameSize>>({});
   const [composition, setComposition] = useState<Record<string, Composition>>({});
-  // 수동 선택: 코트별 출석레코드 id 집합
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
-  // 어떤 코트가 "배정 패널"을 열고 있는지
   const [openCourt, setOpenCourt] = useState<string | null>(null);
 
   const ongoingByCourt = useMemo(() => {
@@ -59,6 +70,12 @@ export function CourtBoard({
     for (const p of pool) m.set(p.id, p);
     return m;
   }, [pool]);
+
+  // 배정 가능한 사람 = 대기중(present)만
+  const availablePool = useMemo(
+    () => pool.filter((p) => p.status === "present"),
+    [pool],
+  );
 
   const sizeOf = (courtId: string): GameSize => gameSize[courtId] ?? 4;
   const compOf = (courtId: string): Composition => composition[courtId] ?? "free";
@@ -81,9 +98,9 @@ export function CourtBoard({
     });
   };
 
-  /** 자동 추천: 알고리즘으로 후보를 뽑아 선택 상태에 채운다. */
+  /** 자동 추천: 대기중인 사람만으로 후보를 뽑는다. */
   const autoFill = (courtId: string) => {
-    const rec = recommendGame(pool, history, {
+    const rec = recommendGame(availablePool, history, {
       gameSize: sizeOf(courtId),
       composition: compOf(courtId),
       currentSeq,
@@ -101,38 +118,35 @@ export function CourtBoard({
     else toast.success("자동 배정 추천 완료");
   };
 
+  const run = (
+    fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
+    successMsg: string,
+    onOk?: () => void,
+  ) => {
+    startTransition(async () => {
+      const res = await fn();
+      if (res.ok) {
+        if (successMsg) toast.success(successMsg);
+        onOk?.();
+        router.refresh();
+      } else {
+        toast.error(res.error?.message ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
   const start = (courtId: string) => {
     const ids = [...selOf(courtId)];
     if (ids.length !== sizeOf(courtId)) {
       toast.error(`${sizeOf(courtId)}명을 채워주세요. (현재 ${ids.length}명)`);
       return;
     }
-    startTransition(async () => {
-      const res = await startGame(sessionId, courtId, ids);
-      if (res.ok) {
-        toast.success("게임을 시작했습니다.");
-        setSelected((prev) => ({ ...prev, [courtId]: new Set() }));
-        setOpenCourt(null);
-        router.refresh();
-      } else {
-        toast.error(res.error.message);
-      }
+    run(() => startGame(sessionId, courtId, ids), "게임을 시작했습니다.", () => {
+      setSelected((prev) => ({ ...prev, [courtId]: new Set() }));
+      setOpenCourt(null);
     });
   };
 
-  const finish = (gameId: string) => {
-    startTransition(async () => {
-      const res = await endGame(gameId);
-      if (res.ok) {
-        toast.success("게임을 종료했습니다.");
-        router.refresh();
-      } else {
-        toast.error(res.error.message);
-      }
-    });
-  };
-
-  // 다른 코트에서 이미 선택된 사람은 회색 처리(겹침 방지)
   const lockedElsewhere = (courtId: string) => {
     const locked = new Set<string>();
     for (const [cid, set] of Object.entries(selected)) {
@@ -163,9 +177,24 @@ export function CourtBoard({
                     게임 중
                   </span>
                 ) : (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    비어 있음
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      비어 있음
+                    </span>
+                    {!isOpen && (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() =>
+                          run(() => deleteCourt(court.id), "코트를 삭제했습니다.")
+                        }
+                        className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
+                        aria-label="코트 삭제"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -194,7 +223,7 @@ export function CourtBoard({
                     variant="outline"
                     className="mt-3"
                     disabled={pending}
-                    onClick={() => finish(game.game.id)}
+                    onClick={() => run(() => endGame(game.game.id), "게임을 종료했습니다.")}
                   >
                     <Square className="size-4" />게임 종료
                   </Button>
@@ -257,7 +286,6 @@ export function CourtBoard({
                     선택
                   </div>
 
-                  {/* 선택된 사람 */}
                   {sel.size > 0 && (
                     <ul className="flex flex-wrap gap-1.5">
                       {[...sel].map((id) => {
@@ -314,21 +342,33 @@ export function CourtBoard({
             </div>
           );
         })}
+
+        {/* 코트 추가 카드 */}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(() => addCourt(), "코트를 추가했습니다.")}
+          className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-muted-foreground transition-colors hover:bg-muted/50 disabled:opacity-50"
+        >
+          <Plus className="size-6" />
+          <span className="text-lg font-semibold">코트 추가</span>
+        </button>
       </div>
 
       {/* 대기자 풀 */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-          대기자 ({pool.length})
+          대기자 ({availablePool.length}/{pool.length})
         </h2>
         {pool.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            대기 중인 사람이 없습니다.
+            출석한 사람이 없습니다.
           </div>
         ) : (
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {pool.map((p) => {
               const activeCourt = openCourt;
+              const isPresent = p.status === "present";
               const selectedHere = activeCourt
                 ? selOf(activeCourt).has(p.id)
                 : false;
@@ -336,46 +376,100 @@ export function CourtBoard({
                 ? lockedElsewhere(activeCourt)
                 : new Set<string>();
               const locked = lockedSet.has(p.id);
-              const clickable = !!activeCourt && !locked;
+              // 패널 열림 + 대기중 + 다른 코트에 안 잡힘 → 선택 모드
+              const selectMode = !!activeCourt && isPresent && !locked;
 
+              const info = (
+                <div className="min-w-0 text-left">
+                  <div className="truncate font-medium">
+                    {p.name}
+                    {p.isGuest && (
+                      <span className="ml-1 text-xs text-amber-600">G</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {p.gender ? GENDER_LABEL[p.gender] : ""}
+                    {p.skill ? ` · ${GRADE_BY_VALUE[p.skill]}` : ""}
+                    {` · ${p.gamesPlayed}게임`}
+                  </div>
+                </div>
+              );
+
+              const statusBadge =
+                p.status !== "present" ? (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_BADGE[p.status] ?? ""}`}
+                  >
+                    {ATTENDEE_STATUS_LABEL[p.status as AttendeeStatus] ?? p.status}
+                  </span>
+                ) : null;
+
+              const baseCls = [
+                "flex w-full items-center justify-between gap-1 rounded-lg border px-3 py-2.5 text-sm transition-colors",
+                selectedHere ? "border-primary bg-primary/10" : "bg-card",
+                !isPresent ? "opacity-60" : "",
+                locked && activeCourt ? "opacity-40" : "",
+              ].join(" ");
+
+              // 배정 패널이 열려 있으면: 선택 토글 (대기중만)
+              if (activeCourt) {
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={!selectMode}
+                      onClick={() => toggleSelect(activeCourt, p.id)}
+                      className={`${baseCls} ${selectMode ? "hover:bg-muted" : "cursor-default"}`}
+                    >
+                      {info}
+                      {selectedHere ? (
+                        <Check className="size-4 shrink-0 text-primary" />
+                      ) : (
+                        statusBadge
+                      )}
+                    </button>
+                  </li>
+                );
+              }
+
+              // 패널 없음: 상태 변경 메뉴
               return (
                 <li key={p.id}>
-                  <button
-                    type="button"
-                    disabled={!clickable}
-                    onClick={() => activeCourt && toggleSelect(activeCourt, p.id)}
-                    className={[
-                      "flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                      selectedHere
-                        ? "border-primary bg-primary/10"
-                        : "bg-card",
-                      clickable ? "hover:bg-muted" : "cursor-default",
-                      locked ? "opacity-40" : "",
-                    ].join(" ")}
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">
-                        {p.name}
-                        {p.isGuest && (
-                          <span className="ml-1 text-xs text-amber-600">G</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.gender ? GENDER_LABEL[p.gender] : ""}
-                        {p.skill ? ` · ${GRADE_BY_VALUE[p.skill]}` : ""}
-                        {` · ${p.gamesPlayed}게임`}
-                      </div>
-                    </div>
-                    {selectedHere && <Check className="size-4 text-primary" />}
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      disabled={pending}
+                      className={`${baseCls} hover:bg-muted disabled:opacity-50`}
+                    >
+                      {info}
+                      {statusBadge}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {ATTENDEE_STATUSES.map((s) => (
+                        <DropdownMenuItem
+                          key={s}
+                          onClick={() =>
+                            run(
+                              () => setAttendeeStatus(p.id, s),
+                              `${p.name} · ${ATTENDEE_STATUS_LABEL[s]}`,
+                            )
+                          }
+                        >
+                          {ATTENDEE_STATUS_LABEL[s]}
+                          {p.status === s && (
+                            <Check className="ml-auto size-4 text-primary" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </li>
               );
             })}
           </ul>
         )}
-        {!openCourt && pool.length > 0 && (
+        {!openCourt && availablePool.length > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            코트의 “게임 배정”을 누르면 대기자를 선택할 수 있습니다.
+            대기자를 누르면 상태(대기중/레슨중/집에감)를 바꿀 수 있습니다.
           </p>
         )}
       </section>
