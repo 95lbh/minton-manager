@@ -25,12 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  GENDER_LABEL,
-  SKILL_VALUE,
-  GRADE_BY_VALUE,
-  type SkillGrade,
-} from "@/lib/constants";
+import { GENDER_LABEL, SKILL_VALUE, GRADE_BY_VALUE } from "@/lib/constants";
 import {
   createMember,
   updateMember,

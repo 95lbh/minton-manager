@@ -77,13 +77,13 @@ export function AttendanceManager({
         addGuest(session.id, {
           name: guestName,
           gender: guestGender === "none" ? null : guestGender,
-          level: guestLevel === NONE ? null : SKILL_VALUE[guestLevel as SkillGrade],
+          level: guestLevel === "none" ? null : SKILL_VALUE[guestLevel],
         }),
       "게스트를 추가했습니다.",
     );
     setGuestName("");
     setGuestGender("none");
-    setGuestLevel(NONE);
+    setGuestLevel("none");
   };
 
   return (
