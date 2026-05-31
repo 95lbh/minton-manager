@@ -32,22 +32,6 @@ export default async function GamesPage() {
 
   const data = await getCourtViewData(club.id, session.id);
 
-  if (data.courts.length === 0) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold">코트/게임</h1>
-        <div className="mt-10 flex flex-col items-center gap-4 rounded-xl border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            등록된 코트가 없습니다. 먼저 코트를 등록하세요.
-          </p>
-          <Link href={ROUTES.courts} className={linkButton}>
-            코트 관리로 이동
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div>
       <h1 className="text-2xl font-bold">코트/게임</h1>
