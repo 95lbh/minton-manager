@@ -40,6 +40,34 @@ export async function createTournament(
   return { ok: true, data: { id: data.id as string } };
 }
 
+/** 게임 결과(청/백 점수) 저장. match_id 기준 upsert. */
+export async function setMatchResult(
+  matchId: string,
+  tournamentId: string,
+  scoreBlue: number,
+  scoreWhite: number,
+): Promise<ActionResult> {
+  const club = await getActiveClub();
+  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const sb = Math.max(0, Math.floor(scoreBlue));
+  const sw = Math.max(0, Math.floor(scoreWhite));
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tournament_results")
+    .upsert(
+      { club_id: club.id, match_id: matchId, score_blue: sb, score_white: sw },
+      { onConflict: "match_id" },
+    );
+
+  if (error) {
+    return { ok: false, error: { message: "결과 저장에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
 /** 대회 형식(구조) 설정: 토너먼트 / 리그전 / 청팀백팀. */
 export async function setTournamentStructure(
   id: string,
@@ -197,7 +225,7 @@ export async function autoSplitTeams(tournamentId: string): Promise<ActionResult
 export async function generateTeamGames(
   tournamentId: string,
   gamesPerPlayer: number,
-): Promise<ActionResult> {
+): Promise<ActionResult<{ excluded: number }>> {
   const n = Math.max(1, Math.floor(gamesPerPlayer));
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
@@ -213,16 +241,21 @@ export async function generateTeamGames(
 
   const { data: parts, error: pErr } = await supabase
     .from("tournament_participants")
-    .select("id, level, team")
+    .select("id, gender, level, team")
     .eq("tournament_id", tournamentId);
   if (pErr || !parts) {
     return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
   }
 
-  const blue = parts.filter((p) => p.team === "blue").map((p) => ({ id: p.id as string, level: p.level as number | null }));
-  const white = parts.filter((p) => p.team === "white").map((p) => ({ id: p.id as string, level: p.level as number | null }));
+  const toSched = (p: (typeof parts)[number]) => ({
+    id: p.id as string,
+    gender: p.gender as "male" | "female" | "other" | null,
+    level: p.level as number | null,
+  });
+  const blue = parts.filter((p) => p.team === "blue").map(toSched);
+  const white = parts.filter((p) => p.team === "white").map(toSched);
 
-  const { games, reason } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
+  const { games, reason, excluded } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
   if (reason) return { ok: false, error: { message: reason } };
   if (games.length === 0) {
     return { ok: false, error: { message: "편성할 게임이 없습니다. 팀 배정을 확인하세요." } };
@@ -262,7 +295,7 @@ export async function generateTeamGames(
   }
 
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
-  return { ok: true };
+  return { ok: true, data: { excluded } };
 }
 
 /** 참가자 팀 수동 지정/해제(blue/white/null). */

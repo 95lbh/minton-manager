@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ListChecks } from "lucide-react";
 import { getActiveClub } from "@/server/queries/clubs";
 import { getMembers } from "@/server/queries/members";
-import { getTournament, getParticipants, getMatches } from "@/server/queries/tournaments";
+import { getTournament, getParticipants } from "@/server/queries/tournaments";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ParticipantsManager } from "@/features/tournaments/participants-manager";
 import { StructureSelector } from "@/features/tournaments/structure-selector";
 import { TeamSplitManager } from "@/features/tournaments/team-split-manager";
-import { TeamGamesManager } from "@/features/tournaments/team-games-manager";
 import { DeleteTournamentButton } from "@/features/tournaments/delete-tournament-button";
 import {
   ROUTES,
@@ -28,10 +28,9 @@ export default async function TournamentDetailPage({
   const tournament = await getTournament(id);
   if (!tournament) notFound();
 
-  const [participants, members, matches] = await Promise.all([
+  const [participants, members] = await Promise.all([
     getParticipants(id),
     getMembers(club.id, false),
-    tournament.structure === "team_split" ? getMatches(id) : Promise.resolve([]),
   ]);
 
   return (
@@ -76,11 +75,11 @@ export default async function TournamentDetailPage({
               tournamentId={tournament.id}
               participants={participants}
             />
-            <TeamGamesManager
-              tournamentId={tournament.id}
-              matches={matches}
-              gamesPerPlayer={tournament.games_per_player}
-            />
+            <Link href={`${ROUTES.tournaments}/${id}/games`}>
+              <Button className="w-full" size="lg">
+                <ListChecks className="mr-1 h-4 w-4" /> 게임 편성 / 결과 페이지로
+              </Button>
+            </Link>
           </>
         )}
       </div>

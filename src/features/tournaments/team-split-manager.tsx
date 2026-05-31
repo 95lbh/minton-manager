@@ -28,13 +28,13 @@ function TeamCard({
   const s = summarize(participants);
   const tone =
     team === "blue"
-      ? "border-sky-300 bg-sky-50"
-      : "border-zinc-300 bg-zinc-50";
+      ? "border-sky-400 bg-sky-100 text-sky-900"
+      : "border-rose-400 bg-rose-100 text-rose-900";
   return (
-    <div className={`rounded-lg border p-3 ${tone}`}>
+    <div className={`rounded-lg border-2 p-3 ${tone}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">{TEAM_LABEL[team]}</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs opacity-80">
           {s.count}명 · 남{s.male}·여{s.female} · 평균 Lv {s.avg || "-"}
         </span>
       </div>
@@ -100,34 +100,50 @@ export function TeamSplitManager({
         <p className="mt-4 text-sm text-muted-foreground">참가자를 먼저 등록하세요.</p>
       ) : (
         <ul className="mt-4 space-y-1">
-          {participants.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2"
-            >
-              <span className="truncate text-sm">
-                {p.name}
-                <span className="ml-1 text-xs text-muted-foreground">
-                  {p.gender ? GENDER_LABEL[p.gender] : ""}
-                  {p.level ? ` · ${GRADE_BY_VALUE[p.level]}` : ""}
+          {participants.map((p) => {
+            const edge =
+              p.team === "blue"
+                ? "border-l-4 border-l-sky-500"
+                : p.team === "white"
+                  ? "border-l-4 border-l-rose-500"
+                  : "border-l-4 border-l-transparent";
+            return (
+              <li
+                key={p.id}
+                className={`flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 ${edge}`}
+              >
+                <span className="truncate text-sm">
+                  {p.name}
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    {p.gender ? GENDER_LABEL[p.gender] : ""}
+                    {p.level ? ` · ${GRADE_BY_VALUE[p.level]}` : ""}
+                  </span>
                 </span>
-              </span>
-              <div className="flex shrink-0 gap-1">
-                {(["blue", "white"] as const).map((t) => (
-                  <Button
-                    key={t}
-                    type="button"
-                    size="sm"
-                    variant={p.team === t ? "default" : "outline"}
-                    onClick={() => move(p, t)}
-                    disabled={pending}
-                  >
-                    {TEAM_LABEL[t]}
-                  </Button>
-                ))}
-              </div>
-            </li>
-          ))}
+                <div className="flex shrink-0 gap-1">
+                  {(["blue", "white"] as const).map((t) => {
+                    const active = p.team === t;
+                    const activeClass =
+                      t === "blue"
+                        ? "bg-sky-600 text-white hover:bg-sky-700 border-sky-600"
+                        : "bg-rose-600 text-white hover:bg-rose-700 border-rose-600";
+                    return (
+                      <Button
+                        key={t}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className={active ? activeClass : ""}
+                        onClick={() => move(p, t)}
+                        disabled={pending}
+                      >
+                        {TEAM_LABEL[t]}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

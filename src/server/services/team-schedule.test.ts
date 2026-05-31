@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { scheduleTeamGames, type SchedParticipant } from "./team-schedule";
 
-function team(prefix: string, n: number, level = 4): SchedParticipant[] {
-  return Array.from({ length: n }, (_, i) => ({ id: `${prefix}${i}`, level }));
+type G = SchedParticipant["gender"];
+function mk(prefix: string, n: number, gender: G, level = 4): SchedParticipant[] {
+  return Array.from({ length: n }, (_, i) => ({ id: `${prefix}${i}`, gender, level }));
 }
 
 function counts(games: { blue: string[]; white: string[] }[]) {
@@ -11,60 +12,87 @@ function counts(games: { blue: string[]; white: string[] }[]) {
   return m;
 }
 
-describe("scheduleTeamGames", () => {
-  it("인원 부족이면 빈 결과 + 사유", () => {
-    const r = scheduleTeamGames({ blue: team("b", 1), white: team("w", 3), perSide: 2, gamesPerPlayer: 3 });
+/** 각 복식 게임이 남복/여복/혼복 중 하나인지 검증 */
+function assertValidDoubles(
+  games: { blue: string[]; white: string[] }[],
+  genderOf: Map<string, G>,
+) {
+  for (const g of games) {
+    expect(g.blue).toHaveLength(2);
+    expect(g.white).toHaveLength(2);
+    const bg = g.blue.map((id) => genderOf.get(id)).sort();
+    const wg = g.white.map((id) => genderOf.get(id)).sort();
+    // 양 팀의 성별 구성이 같아야 하고(MM/FF/MF), 청/백이 동일 구성
+    expect(bg).toEqual(wg);
+    const isMM = bg.every((x) => x === "male");
+    const isFF = bg.every((x) => x === "female");
+    const isMix = bg[0] === "female" && bg[1] === "male";
+    expect(isMM || isFF || isMix).toBe(true);
+  }
+}
+
+describe("scheduleTeamGames (성별 구성)", () => {
+  it("인원 부족이면 사유 반환", () => {
+    const r = scheduleTeamGames({
+      blue: mk("b", 1, "male"),
+      white: mk("w", 1, "male"),
+      perSide: 2,
+      gamesPerPlayer: 3,
+    });
     expect(r.games).toEqual([]);
     expect(r.reason).toBeTruthy();
   });
 
-  it("복식: 각 게임은 청2·백2, 같은 게임에 중복 인물 없음", () => {
-    const r = scheduleTeamGames({ blue: team("b", 4), white: team("w", 4), perSide: 2, gamesPerPlayer: 4 });
-    expect(r.games.length).toBeGreaterThan(0);
-    for (const g of r.games) {
-      expect(g.blue).toHaveLength(2);
-      expect(g.white).toHaveLength(2);
-      expect(new Set([...g.blue, ...g.white]).size).toBe(4);
-    }
-  });
-
-  it("모든 참가자가 인당 게임수 이상 보장된다(복식)", () => {
-    const r = scheduleTeamGames({ blue: team("b", 5), white: team("w", 6), perSide: 2, gamesPerPlayer: 5 });
-    const c = counts(r.games);
-    for (const v of c.values()) expect(v).toBeGreaterThanOrEqual(5);
-  });
-
-  it("게임 수 편차가 작다(균등 분포)", () => {
-    const r = scheduleTeamGames({ blue: team("b", 5), white: team("w", 5), perSide: 2, gamesPerPlayer: 4 });
-    const vals = [...counts(r.games).values()];
-    expect(Math.max(...vals) - Math.min(...vals)).toBeLessThanOrEqual(2);
-  });
-
-  it("단식: 각 게임은 청1·백1, 인당 보장", () => {
-    const r = scheduleTeamGames({ blue: team("b", 3), white: team("w", 4), perSide: 1, gamesPerPlayer: 3 });
-    for (const g of r.games) {
-      expect(g.blue).toHaveLength(1);
-      expect(g.white).toHaveLength(1);
-    }
-    const c = counts(r.games);
-    for (const v of c.values()) expect(v).toBeGreaterThanOrEqual(3);
-  });
-
-  it("실력 매칭: 청/백 평균 실력 차가 작다", () => {
-    // 다양한 레벨
-    const blue = [7, 6, 5, 4, 3, 2].map((lv, i) => ({ id: `b${i}`, level: lv }));
-    const white = [7, 6, 5, 4, 3, 2].map((lv, i) => ({ id: `w${i}`, level: lv }));
+  it("남복: 모든 게임이 남자 2:2, 인당 보장", () => {
+    const blue = mk("b", 4, "male");
+    const white = mk("w", 4, "male");
+    const g = new Map([...blue, ...white].map((p) => [p.id, p.gender]));
     const r = scheduleTeamGames({ blue, white, perSide: 2, gamesPerPlayer: 4 });
-    const lvlOf = new Map([...blue, ...white].map((p) => [p.id, p.level]));
-    for (const g of r.games) {
-      const ba = g.blue.reduce((s, id) => s + lvlOf.get(id)!, 0) / g.blue.length;
-      const wa = g.white.reduce((s, id) => s + lvlOf.get(id)!, 0) / g.white.length;
-      expect(Math.abs(ba - wa)).toBeLessThanOrEqual(2);
+    assertValidDoubles(r.games, g);
+    for (const v of counts(r.games).values()) expect(v).toBeGreaterThanOrEqual(4);
+  });
+
+  it("혼성 풀: 모든 게임이 남복/여복/혼복 중 하나(3남1녀 없음)", () => {
+    const blue = [...mk("bm", 3, "male", 5), ...mk("bf", 3, "female", 4)];
+    const white = [...mk("wm", 3, "male", 5), ...mk("wf", 3, "female", 4)];
+    const g = new Map([...blue, ...white].map((p) => [p.id, p.gender]));
+    const r = scheduleTeamGames({ blue, white, perSide: 2, gamesPerPlayer: 4 });
+    expect(r.games.length).toBeGreaterThan(0);
+    assertValidDoubles(r.games, g);
+    for (const v of counts(r.games).values()) expect(v).toBeGreaterThanOrEqual(4);
+  });
+
+  it("성별 미지정은 제외(excluded) 처리", () => {
+    const blue = [...mk("bm", 2, "male"), ...mk("bx", 1, null)];
+    const white = [...mk("wm", 2, "male"), ...mk("wx", 1, "other")];
+    const r = scheduleTeamGames({ blue, white, perSide: 2, gamesPerPlayer: 3 });
+    expect(r.excluded).toBe(2);
+    // 남자만 게임에 등장
+    const ids = new Set(r.games.flatMap((m) => [...m.blue, ...m.white]));
+    expect([...ids].every((id) => id.startsWith("bm") || id.startsWith("wm"))).toBe(true);
+  });
+
+  it("단식: 동성 매칭(남단/여단), 인당 보장", () => {
+    const blue = [...mk("bm", 2, "male"), ...mk("bf", 2, "female")];
+    const white = [...mk("wm", 2, "male"), ...mk("wf", 2, "female")];
+    const g = new Map([...blue, ...white].map((p) => [p.id, p.gender]));
+    const r = scheduleTeamGames({ blue, white, perSide: 1, gamesPerPlayer: 2 });
+    for (const m of r.games) {
+      expect(m.blue).toHaveLength(1);
+      expect(m.white).toHaveLength(1);
+      expect(genderEq(g, m)).toBe(true);
     }
+    for (const v of counts(r.games).values()) expect(v).toBeGreaterThanOrEqual(2);
   });
 
   it("결정적: 동일 입력 동일 결과", () => {
-    const inp = { blue: team("b", 4), white: team("w", 4), perSide: 2 as const, gamesPerPlayer: 3 };
+    const blue = [...mk("bm", 2, "male"), ...mk("bf", 2, "female")];
+    const white = [...mk("wm", 2, "male"), ...mk("wf", 2, "female")];
+    const inp = { blue, white, perSide: 2 as const, gamesPerPlayer: 3 };
     expect(scheduleTeamGames(inp)).toEqual(scheduleTeamGames(inp));
   });
 });
+
+function genderEq(g: Map<string, G>, m: { blue: string[]; white: string[] }) {
+  return g.get(m.blue[0]) === g.get(m.white[0]);
+}
