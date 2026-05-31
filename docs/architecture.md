@@ -62,6 +62,12 @@
 - 비회원 임시 클럽이 **마지막 활동(마지막 출석 세션 날짜, 없으면 생성일)로부터 7일** 지나면 soft delete.
 - `cleanup_temporary_clubs(_days int default 7)` 함수가 일괄 처리. **스케줄러 전용**(authenticated 권한 미부여) — Supabase pg_cron 또는 Edge Function cron에서 주기 호출 예정. (현재 함수만 정의, 스케줄 등록은 운영 단계에서.)
 
+### 대회 모드 (기반 구현됨, 0008)
+일반 모드와 분리된 토너먼트 운영. 이번 증분은 **대회 생성 + 참가자 등록**까지.
+- 테이블(0008): `tournaments`(name, `match_type` 단식/복식, status) · `tournament_participants`(member 연결 또는 신규, name, seed). 모두 `club_id` + RLS(`is_club_member`) 격리.
+- 화면: `/tournaments`(목록·생성 다이얼로그) → `/tournaments/[id]`(참가자 등록: 회원에서 추가 / 신규(게스트) 추가 / 제거, 대회 삭제).
+- **다음 증분(0009 예정)**: 대진(matches)·팀 구성(match_sides, 복식)·승패/점수(results)·자동 편성/브래킷. 일반 모드는 여전히 승패/점수 없음(대회 모드 전용).
+
 ## 4. 폴더 구조 (계획)
 
 ```txt

@@ -8,6 +8,9 @@ import type { ClubRole } from "@/lib/constants";
 export type MemberGender = "male" | "female" | "other";
 export type GameStatus = "ongoing" | "finished" | "canceled";
 export type SessionStatus = "open" | "closed";
+export type TournamentStatus = "draft" | "ongoing" | "finished";
+export type TournamentMatchType = "singles" | "doubles";
+export type TournamentStructure = "tournament" | "league" | "team_split";
 
 export interface Club {
   id: string;
@@ -105,4 +108,29 @@ export interface MemberStats {
   attend_cnt: number;
   game_cnt: number;
   last_played_at: string | null;
+}
+
+export interface Tournament {
+  id: string;
+  club_id: string;
+  name: string;
+  match_type: TournamentMatchType;
+  structure: TournamentStructure | null;
+  status: TournamentStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface TournamentParticipant {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  member_id: string | null;
+  name: string;
+  gender: MemberGender | null;
+  level: number | null;
+  seed: number | null;
+  created_at: string;
 }

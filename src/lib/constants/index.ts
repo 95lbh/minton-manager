@@ -20,6 +20,22 @@ export const GENDER_LABEL: Record<string, string> = {
   other: "기타",
 };
 
+/** 대회 상태 / 경기 형식 표시 라벨. */
+export const TOURNAMENT_STATUS_LABEL = {
+  draft: "준비중",
+  ongoing: "진행중",
+  finished: "종료",
+} as const;
+export const MATCH_TYPE_LABEL = {
+  singles: "단식",
+  doubles: "복식",
+} as const;
+export const TOURNAMENT_STRUCTURE_LABEL = {
+  tournament: "토너먼트",
+  league: "리그전",
+  team_split: "청팀/백팀",
+} as const;
+
 /** 출석자(대기자) 상태. present 만 코트 배정 가능. */
 export const ATTENDEE_STATUSES = ["present", "lesson", "left"] as const;
 export type AttendeeStatus = (typeof ATTENDEE_STATUSES)[number];
