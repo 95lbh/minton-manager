@@ -7,6 +7,7 @@ import { getTournament, getParticipants } from "@/server/queries/tournaments";
 import { Badge } from "@/components/ui/badge";
 import { ParticipantsManager } from "@/features/tournaments/participants-manager";
 import { StructureSelector } from "@/features/tournaments/structure-selector";
+import { TeamSplitManager } from "@/features/tournaments/team-split-manager";
 import { DeleteTournamentButton } from "@/features/tournaments/delete-tournament-button";
 import {
   ROUTES,
@@ -67,6 +68,12 @@ export default async function TournamentDetailPage({
           structure={tournament.structure}
           participantCount={participants.length}
         />
+        {tournament.structure === "team_split" && (
+          <TeamSplitManager
+            tournamentId={tournament.id}
+            participants={participants}
+          />
+        )}
       </div>
     </div>
   );

@@ -35,6 +35,10 @@ export const TOURNAMENT_STRUCTURE_LABEL = {
   league: "리그전",
   team_split: "청팀/백팀",
 } as const;
+export const TEAM_LABEL = {
+  blue: "청팀",
+  white: "백팀",
+} as const;
 
 /** 출석자(대기자) 상태. present 만 코트 배정 가능. */
 export const ATTENDEE_STATUSES = ["present", "lesson", "left"] as const;

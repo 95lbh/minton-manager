@@ -11,6 +11,7 @@ export type SessionStatus = "open" | "closed";
 export type TournamentStatus = "draft" | "ongoing" | "finished";
 export type TournamentMatchType = "singles" | "doubles";
 export type TournamentStructure = "tournament" | "league" | "team_split";
+export type TournamentTeam = "blue" | "white";
 
 export interface Club {
   id: string;
@@ -131,6 +132,7 @@ export interface TournamentParticipant {
   name: string;
   gender: MemberGender | null;
   level: number | null;
+  team: TournamentTeam | null;
   seed: number | null;
   created_at: string;
 }

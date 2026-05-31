@@ -5,10 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveClub } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
+import { splitTeams } from "@/server/services/team-split";
 import type {
   MemberGender,
   TournamentMatchType,
   TournamentStructure,
+  TournamentTeam,
 } from "@/types/db";
 
 /** 대회 생성. 생성한 대회 id 반환. */
@@ -139,6 +141,68 @@ export async function addGuestParticipant(
 
   if (error) {
     return { ok: false, error: { message: "참가자 등록에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
+/** 청팀/백팀 자동 균형 편성. 성비·실력을 고르게 분배해 team 갱신. */
+export async function autoSplitTeams(tournamentId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tournament_participants")
+    .select("id, gender, level")
+    .eq("tournament_id", tournamentId);
+
+  if (error || !data) {
+    return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: error?.message } };
+  }
+  if (data.length < 2) {
+    return { ok: false, error: { message: "참가자가 2명 이상이어야 편성할 수 있습니다." } };
+  }
+
+  const result = splitTeams(
+    data.map((p) => ({
+      id: p.id as string,
+      gender: p.gender as "male" | "female" | "other" | null,
+      level: p.level as number | null,
+    })),
+  );
+
+  // 팀별로 한 번에 갱신(2 쿼리).
+  if (result.blue.length) {
+    const { error: e1 } = await supabase
+      .from("tournament_participants")
+      .update({ team: "blue" })
+      .in("id", result.blue);
+    if (e1) return { ok: false, error: { message: "팀 배정에 실패했습니다.", detail: e1.message } };
+  }
+  if (result.white.length) {
+    const { error: e2 } = await supabase
+      .from("tournament_participants")
+      .update({ team: "white" })
+      .in("id", result.white);
+    if (e2) return { ok: false, error: { message: "팀 배정에 실패했습니다.", detail: e2.message } };
+  }
+
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
+/** 참가자 팀 수동 지정/해제(blue/white/null). */
+export async function setParticipantTeam(
+  participantId: string,
+  tournamentId: string,
+  team: TournamentTeam | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tournament_participants")
+    .update({ team })
+    .eq("id", participantId);
+
+  if (error) {
+    return { ok: false, error: { message: "팀 변경에 실패했습니다.", detail: error.message } };
   }
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
   return { ok: true };
