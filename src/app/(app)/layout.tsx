@@ -24,7 +24,8 @@ export default async function AppLayout({
               <code>supabase/migrations/0001_init.sql</code> 실행
             </li>
             <li>
-              Google OAuth Provider 활성화 (Supabase Auth)
+              OAuth Provider 활성화 (Google·Kakao) + 익명 로그인 허용
+              (Supabase Auth)
             </li>
             <li>
               <code>.env.local</code>에 URL/anon key 입력 후 재시작
@@ -35,10 +36,10 @@ export default async function AppLayout({
           </p>
         </div>
         <Link
-          href={ROUTES.login}
+          href={ROUTES.home}
           className="mt-4 inline-block text-sm underline"
         >
-          로그인 페이지로
+          시작 화면으로
         </Link>
       </main>
     );
@@ -50,7 +51,7 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(ROUTES.login);
+    redirect(ROUTES.home);
   }
 
   // 소속 클럽이 없으면 온보딩으로
@@ -59,8 +60,15 @@ export default async function AppLayout({
     redirect(ROUTES.onboarding);
   }
 
+  const isGuest = user.is_anonymous ?? false;
+
   return (
-    <AppShell userEmail={user.email ?? ""} clubs={clubs} activeClub={activeClub}>
+    <AppShell
+      userEmail={user.email ?? (isGuest ? "체험 사용자" : "")}
+      clubs={clubs}
+      activeClub={activeClub}
+      isGuest={isGuest}
+    >
       {children}
     </AppShell>
   );

@@ -30,6 +30,25 @@ export async function getTodaySession(
   return data as AttendanceSession;
 }
 
+/** 오늘 세션을 반환하되 없으면 생성한다. (출석 탭 진입 시 즉시 출석 가능하도록) */
+export async function getOrCreateTodaySession(
+  clubId: string,
+): Promise<AttendanceSession | null> {
+  const existing = await getTodaySession(clubId);
+  if (existing) return existing;
+
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .insert({ club_id: clubId, session_date: today })
+    .select("*")
+    .single();
+
+  if (error || !data) return null;
+  return data as AttendanceSession;
+}
+
 /** 세션의 출석 레코드(회원 정보 조인). 출석 시각 순. */
 export async function getAttendanceRecords(
   sessionId: string,

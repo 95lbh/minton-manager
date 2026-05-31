@@ -45,8 +45,9 @@ export async function updateSession(request: NextRequest) {
   const isProtected = !isPublicPath(pathname);
 
   if (!user && isProtected) {
+    // 미인증 진입은 로그인 페이지가 아니라 첫 진입 랜딩(비회원 시작 기본)으로.
     const url = request.nextUrl.clone();
-    url.pathname = ROUTES.login;
+    url.pathname = ROUTES.home;
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { createClub } from "@/server/mutations/clubs";
 import { ROUTES } from "@/lib/constants";
 
-export function CreateClubForm() {
+export function CreateClubForm({ isGuest = false }: { isGuest?: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
@@ -42,7 +42,7 @@ export function CreateClubForm() {
           id="club-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="예: 월요 배드민턴 모임"
+          placeholder={"ex) 내맘대로 배드민턴"}
           autoFocus
           maxLength={50}
         />

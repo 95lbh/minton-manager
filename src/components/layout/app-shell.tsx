@@ -1,5 +1,6 @@
 import { AppNav } from "@/components/layout/app-nav";
 import { ClubSwitcher } from "@/components/layout/club-switcher";
+import { GuestBanner } from "@/components/layout/guest-banner";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/server/mutations/auth";
 import type { MyClub } from "@/server/queries/clubs";
@@ -9,14 +10,17 @@ export function AppShell({
   userEmail,
   clubs,
   activeClub,
+  isGuest = false,
 }: {
   children: React.ReactNode;
   userEmail: string;
   clubs: MyClub[];
   activeClub: MyClub;
+  isGuest?: boolean;
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      {isGuest && <GuestBanner />}
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <ClubSwitcher clubs={clubs} activeClub={activeClub} />

@@ -6,42 +6,6 @@ import { getActiveClub } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 
-/** 오늘 세션을 생성(이미 있으면 그대로 반환). */
-export async function startTodaySession(): Promise<ActionResult<{ id: string }>> {
-  const club = await getActiveClub();
-  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
-
-  const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
-
-  // 이미 오늘 세션이 있으면 재사용
-  const { data: existing } = await supabase
-    .from("attendance_sessions")
-    .select("id")
-    .eq("club_id", club.id)
-    .eq("session_date", today)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existing?.id) {
-    revalidatePath(ROUTES.attendance);
-    return { ok: true, data: { id: existing.id } };
-  }
-
-  const { data, error } = await supabase
-    .from("attendance_sessions")
-    .insert({ club_id: club.id, session_date: today })
-    .select("id")
-    .single();
-
-  if (error || !data)
-    return { ok: false, error: { message: "세션 생성에 실패했습니다.", detail: error?.message } };
-
-  revalidatePath(ROUTES.attendance);
-  return { ok: true, data: { id: data.id } };
-}
-
 /** 회원 출석 체크. */
 export async function checkInMember(
   sessionId: string,
