@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
 import { GradeToggle, type GradeValue } from "@/components/ui/grade-toggle";
+import { QrDialog } from "@/features/attendance/qr-dialog";
 import {
   checkInMember,
   addGuest,
@@ -88,13 +89,16 @@ export function AttendanceManager({
 
   return (
     <div className="space-y-6">
-      {/* 요약 */}
-      <div className="rounded-lg border bg-card px-4 py-3 text-sm">
-        출석 <b>{records.length}</b>명
-        <span className="text-muted-foreground">
-          {" "}
-          (회원 {memberCount} · 게스트 {guestCount})
-        </span>
+      {/* 요약 + QR */}
+      <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
+        <p className="text-sm">
+          출석 <b>{records.length}</b>명
+          <span className="text-muted-foreground">
+            {" "}
+            (회원 {memberCount} · 게스트 {guestCount})
+          </span>
+        </p>
+        <QrDialog token={session.checkin_token} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
