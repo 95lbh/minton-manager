@@ -41,6 +41,32 @@ export async function startGame(
   return { ok: true };
 }
 
+/** 진행 중 게임의 참가자 교체 (멤버 변경 / 인원수=종류 변경). RPC 트랜잭션. */
+export async function replaceGamePlayers(
+  gameId: string,
+  players: string[],
+): Promise<ActionResult> {
+  if (players.length < 2) {
+    return { ok: false, error: { message: "최소 2명을 배정하세요." } };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("replace_game_players", {
+    _game_id: gameId,
+    _players: players,
+  });
+
+  if (error) {
+    const message = error.message?.includes("uq_active_player")
+      ? "이미 다른 게임에 배정된 사람이 있습니다."
+      : "게임 멤버 변경에 실패했습니다.";
+    return { ok: false, error: { message, detail: error.message } };
+  }
+
+  revalidatePath(ROUTES.games);
+  return { ok: true };
+}
+
 /** 게임 종료 (RPC: status=finished, 참가자 비활성화 트리거). */
 export async function endGame(gameId: string): Promise<ActionResult> {
   const supabase = await createClient();

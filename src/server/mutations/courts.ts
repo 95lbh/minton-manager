@@ -6,6 +6,27 @@ import { getActiveClub } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 
+/** 코트 이름 변경. */
+export async function renameCourt(
+  courtId: string,
+  name: string,
+): Promise<ActionResult> {
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: { message: "코트 이름을 입력하세요." } };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("courts")
+    .update({ name: trimmed })
+    .eq("id", courtId);
+
+  if (error)
+    return { ok: false, error: { message: "코트 이름 변경에 실패했습니다.", detail: error.message } };
+
+  revalidatePath(ROUTES.games);
+  return { ok: true };
+}
+
 /** 코트 1개 추가 ("{n}번 코트"). 코트/게임 화면에서 사용. */
 export async function addCourt(): Promise<ActionResult> {
   const club = await getActiveClub();

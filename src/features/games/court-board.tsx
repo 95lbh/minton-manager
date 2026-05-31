@@ -3,8 +3,19 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Square, Play, X, Check, Clock, Trash2, Plus } from "lucide-react";
+import {
+  Sparkles,
+  Square,
+  Play,
+  X,
+  Check,
+  Clock,
+  Trash2,
+  Plus,
+  Pencil,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -30,8 +41,12 @@ import {
 } from "@/lib/constants";
 import { ElapsedTime } from "@/features/games/elapsed-time";
 import { recommendGame, type GameSize } from "@/server/services/assignment";
-import { startGame, endGame } from "@/server/mutations/games";
-import { addCourt, deleteCourt } from "@/server/mutations/courts";
+import {
+  startGame,
+  endGame,
+  replaceGamePlayers,
+} from "@/server/mutations/games";
+import { addCourt, deleteCourt, renameCourt } from "@/server/mutations/courts";
 import { setAttendeeStatus } from "@/server/mutations/attendance";
 import type { CourtViewData, PoolPlayer } from "@/server/queries/games";
 
@@ -57,7 +72,11 @@ export function CourtBoard({
   const [gameSize, setGameSize] = useState<Record<string, GameSize>>({});
   const [composition, setComposition] = useState<Record<string, Composition>>({});
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
+  // 코트별 모드: 'assign'(빈 코트 배정) | 'edit'(진행중 게임 멤버/종류 수정)
   const [openCourt, setOpenCourt] = useState<string | null>(null);
+  const [openMode, setOpenMode] = useState<"assign" | "edit">("assign");
+  // 코트 이름 편집 상태
+  const [renaming, setRenaming] = useState<Record<string, string>>({});
 
   const ongoingByCourt = useMemo(() => {
     const m = new Map<string, (typeof ongoing)[number]>();
@@ -98,26 +117,6 @@ export function CourtBoard({
     });
   };
 
-  /** 자동 추천: 대기중인 사람만으로 후보를 뽑는다. */
-  const autoFill = (courtId: string) => {
-    const rec = recommendGame(availablePool, history, {
-      gameSize: sizeOf(courtId),
-      composition: compOf(courtId),
-      currentSeq,
-    });
-    if (!rec) {
-      toast.error(
-        compOf(courtId) === "mixed"
-          ? "혼복 인원(남/여)이 부족합니다."
-          : "배정할 대기 인원이 부족합니다.",
-      );
-      return;
-    }
-    setSelected((prev) => ({ ...prev, [courtId]: new Set(rec.players) }));
-    if (rec.warnings.length > 0) toast.warning(rec.warnings[0]);
-    else toast.success("자동 배정 추천 완료");
-  };
-
   const run = (
     fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
     successMsg: string,
@@ -135,16 +134,75 @@ export function CourtBoard({
     });
   };
 
+  /** 자동 추천: 대기중인 사람만으로 후보를 뽑는다. 수정 모드면 현재 멤버도 후보에 포함. */
+  const autoFill = (courtId: string, extra: PoolPlayer[] = []) => {
+    const base = [...availablePool];
+    for (const e of extra) if (!base.some((p) => p.id === e.id)) base.push(e);
+    const rec = recommendGame(base, history, {
+      gameSize: sizeOf(courtId),
+      composition: compOf(courtId),
+      currentSeq,
+    });
+    if (!rec) {
+      toast.error(
+        compOf(courtId) === "mixed"
+          ? "혼복 인원(남/여)이 부족합니다."
+          : "배정할 대기 인원이 부족합니다.",
+      );
+      return;
+    }
+    setSelected((prev) => ({ ...prev, [courtId]: new Set(rec.players) }));
+    if (rec.warnings.length > 0) toast.warning(rec.warnings[0]);
+    else toast.success("자동 배정 추천 완료");
+  };
+
+  const openAssign = (courtId: string) => {
+    setOpenMode("assign");
+    setOpenCourt(courtId);
+    setSelected((p) => ({ ...p, [courtId]: new Set() }));
+  };
+
+  const openEdit = (
+    courtId: string,
+    game: (typeof ongoing)[number],
+  ) => {
+    setOpenMode("edit");
+    setOpenCourt(courtId);
+    setGameSize((p) => ({
+      ...p,
+      [courtId]: (game.players.length === 2 ? 2 : 4) as GameSize,
+    }));
+    setSelected((p) => ({
+      ...p,
+      [courtId]: new Set(game.players.map((pl) => pl.attendanceRecordId)),
+    }));
+  };
+
+  const closePanel = (courtId: string) => {
+    setOpenCourt(null);
+    setSelected((p) => ({ ...p, [courtId]: new Set() }));
+  };
+
   const start = (courtId: string) => {
     const ids = [...selOf(courtId)];
     if (ids.length !== sizeOf(courtId)) {
       toast.error(`${sizeOf(courtId)}명을 채워주세요. (현재 ${ids.length}명)`);
       return;
     }
-    run(() => startGame(sessionId, courtId, ids), "게임을 시작했습니다.", () => {
-      setSelected((prev) => ({ ...prev, [courtId]: new Set() }));
-      setOpenCourt(null);
-    });
+    run(() => startGame(sessionId, courtId, ids), "게임을 시작했습니다.", () =>
+      closePanel(courtId),
+    );
+  };
+
+  const saveEdit = (courtId: string, gameId: string) => {
+    const ids = [...selOf(courtId)];
+    if (ids.length !== sizeOf(courtId)) {
+      toast.error(`${sizeOf(courtId)}명을 채워주세요. (현재 ${ids.length}명)`);
+      return;
+    }
+    run(() => replaceGamePlayers(gameId, ids), "게임을 수정했습니다.", () =>
+      closePanel(courtId),
+    );
   };
 
   const lockedElsewhere = (courtId: string) => {
@@ -164,42 +222,143 @@ export function CourtBoard({
           const game = ongoingByCourt.get(court.id);
           const isOpen = openCourt === court.id;
           const sel = selOf(court.id);
+          const isRenaming = renaming[court.id] !== undefined;
 
           return (
             <div
               key={court.id}
               className="flex flex-col rounded-xl border bg-card p-4"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{court.name}</h3>
-                {game ? (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    게임 중
-                  </span>
+              {/* 헤더: 이름(+편집) / 상태배지 / 액션 */}
+              <div className="flex items-center justify-between gap-2">
+                {isRenaming ? (
+                  <form
+                    className="flex flex-1 gap-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      run(
+                        () => renameCourt(court.id, renaming[court.id]),
+                        "코트 이름을 변경했습니다.",
+                        () =>
+                          setRenaming((p) => {
+                            const n = { ...p };
+                            delete n[court.id];
+                            return n;
+                          }),
+                      );
+                    }}
+                  >
+                    <Input
+                      value={renaming[court.id]}
+                      onChange={(e) =>
+                        setRenaming((p) => ({ ...p, [court.id]: e.target.value }))
+                      }
+                      className="h-8"
+                      autoFocus
+                      maxLength={30}
+                    />
+                    <Button type="submit" size="sm" disabled={pending}>
+                      저장
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setRenaming((p) => {
+                          const n = { ...p };
+                          delete n[court.id];
+                          return n;
+                        })
+                      }
+                    >
+                      취소
+                    </Button>
+                  </form>
                 ) : (
-                  <div className="flex items-center gap-1">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      비어 있음
-                    </span>
-                    {!isOpen && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          run(() => deleteCourt(court.id), "코트를 삭제했습니다.")
-                        }
-                        className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
-                        aria-label="코트 삭제"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    )}
-                  </div>
+                  <>
+                    <h3 className="font-semibold">{court.name}</h3>
+                    <div className="flex items-center gap-1">
+                      {game ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          게임 중
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          비어 있음
+                        </span>
+                      )}
+                      {!isOpen && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() =>
+                              setRenaming((p) => ({ ...p, [court.id]: court.name }))
+                            }
+                            className="rounded-md p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+                            aria-label="코트 수정"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          {!game && (
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() =>
+                                run(
+                                  () => deleteCourt(court.id),
+                                  "코트를 삭제했습니다.",
+                                )
+                              }
+                              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
+                              aria-label="코트 삭제"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* 게임 중 */}
-              {game ? (
+              {/* 본문 */}
+              {isOpen ? (
+                <AssignPanel
+                  mode={openMode}
+                  size={sizeOf(court.id)}
+                  comp={compOf(court.id)}
+                  selectedIds={[...sel]}
+                  poolById={poolById}
+                  pending={pending}
+                  onSizeChange={(s) =>
+                    setGameSize((p) => ({ ...p, [court.id]: s }))
+                  }
+                  onCompChange={(c) =>
+                    setComposition((p) => ({ ...p, [court.id]: c }))
+                  }
+                  onAuto={() =>
+                    autoFill(
+                      court.id,
+                      openMode === "edit" && game
+                        ? game.players
+                            .map((pl) => poolById.get(pl.attendanceRecordId))
+                            .filter((x): x is PoolPlayer => !!x)
+                        : [],
+                    )
+                  }
+                  onRemove={(id) => toggleSelect(court.id, id)}
+                  onCancel={() => closePanel(court.id)}
+                  onSubmit={() =>
+                    openMode === "edit" && game
+                      ? saveEdit(court.id, game.game.id)
+                      : start(court.id)
+                  }
+                />
+              ) : game ? (
+                /* 게임 중 */
                 <div className="mt-3 flex flex-1 flex-col">
                   <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Clock className="size-3.5" />
@@ -219,122 +378,31 @@ export function CourtBoard({
                       </div>
                     ))}
                   </div>
-                  <Button
-                    variant="outline"
-                    className="mt-3"
-                    disabled={pending}
-                    onClick={() => run(() => endGame(game.game.id), "게임을 종료했습니다.")}
-                  >
-                    <Square className="size-4" />게임 종료
-                  </Button>
-                </div>
-              ) : isOpen ? (
-                /* 배정 패널 */
-                <div className="mt-3 flex flex-1 flex-col gap-3">
-                  <div className="flex gap-2">
-                    <Select
-                      value={String(sizeOf(court.id))}
-                      onValueChange={(v) =>
-                        setGameSize((p) => ({
-                          ...p,
-                          [court.id]: (v === "2" ? 2 : 4) as GameSize,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="h-9 flex-1">
-                        <SelectValue>{SIZE_LABEL[sizeOf(court.id)]}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="4">복식 4명</SelectItem>
-                        <SelectItem value="2">단식 2명</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={compOf(court.id)}
-                      onValueChange={(v) =>
-                        setComposition((p) => ({
-                          ...p,
-                          [court.id]: (v ?? "free") as Composition,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="h-9 flex-1">
-                        <SelectValue>
-                          {COMPOSITION_LABEL[compOf(court.id)]}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMPOSITIONS.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {COMPOSITION_LABEL[c]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => autoFill(court.id)}
-                  >
-                    <Sparkles className="size-4" />자동 배정 추천
-                  </Button>
-
-                  <div className="text-xs text-muted-foreground">
-                    선택 {sel.size}/{sizeOf(court.id)}명 · 아래 대기자에서 탭하여
-                    선택
-                  </div>
-
-                  {sel.size > 0 && (
-                    <ul className="flex flex-wrap gap-1.5">
-                      {[...sel].map((id) => {
-                        const p = poolById.get(id);
-                        if (!p) return null;
-                        return (
-                          <li
-                            key={id}
-                            className="flex items-center gap-1 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs"
-                          >
-                            {p.name}
-                            <button
-                              type="button"
-                              onClick={() => toggleSelect(court.id, id)}
-                              className="rounded-full p-0.5 hover:bg-muted"
-                            >
-                              <X className="size-3" />
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-
-                  <div className="mt-auto flex gap-2 pt-2">
+                  <div className="mt-3 flex gap-2">
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setOpenCourt(null);
-                        setSelected((p) => ({ ...p, [court.id]: new Set() }));
-                      }}
+                      variant="outline"
+                      className="flex-1"
+                      disabled={pending}
+                      onClick={() => openEdit(court.id, game)}
                     >
-                      취소
+                      <Pencil className="size-4" />멤버 수정
                     </Button>
                     <Button
-                      size="sm"
+                      variant="outline"
                       className="flex-1"
-                      disabled={pending || sel.size !== sizeOf(court.id)}
-                      onClick={() => start(court.id)}
+                      disabled={pending}
+                      onClick={() =>
+                        run(() => endGame(game.game.id), "게임을 종료했습니다.")
+                      }
                     >
-                      <Play className="size-4" />시작
+                      <Square className="size-4" />종료
                     </Button>
                   </div>
                 </div>
               ) : (
                 /* 빈 코트 기본 */
                 <div className="mt-3 flex flex-1 flex-col justify-center">
-                  <Button onClick={() => setOpenCourt(court.id)}>
+                  <Button onClick={() => openAssign(court.id)}>
                     <Play className="size-4" />게임 배정
                   </Button>
                 </div>
@@ -376,8 +444,9 @@ export function CourtBoard({
                 ? lockedElsewhere(activeCourt)
                 : new Set<string>();
               const locked = lockedSet.has(p.id);
-              // 패널 열림 + 대기중 + 다른 코트에 안 잡힘 → 선택 모드
-              const selectMode = !!activeCourt && isPresent && !locked;
+              // 패널 열림 + (대기중 또는 이미 이 게임 멤버) + 다른 코트에 안 잡힘 → 선택 모드
+              const selectMode =
+                !!activeCourt && (isPresent || selectedHere) && !locked;
 
               const info = (
                 <div className="min-w-0 text-left">
@@ -407,11 +476,10 @@ export function CourtBoard({
               const baseCls = [
                 "flex w-full items-center justify-between gap-1 rounded-lg border px-3 py-2.5 text-sm transition-colors",
                 selectedHere ? "border-primary bg-primary/10" : "bg-card",
-                !isPresent ? "opacity-60" : "",
+                !isPresent && !selectedHere ? "opacity-60" : "",
                 locked && activeCourt ? "opacity-40" : "",
               ].join(" ");
 
-              // 배정 패널이 열려 있으면: 선택 토글 (대기중만)
               if (activeCourt) {
                 return (
                   <li key={p.id}>
@@ -432,7 +500,6 @@ export function CourtBoard({
                 );
               }
 
-              // 패널 없음: 상태 변경 메뉴
               return (
                 <li key={p.id}>
                   <DropdownMenu>
@@ -473,6 +540,139 @@ export function CourtBoard({
           </p>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * 배정/수정 패널.
+ * 레이아웃: 위 = 선택된 멤버 + 안내, 아래 = 컨트롤(자동배정 + 단복식/혼복 셀렉트) + 액션.
+ */
+function AssignPanel({
+  mode,
+  size,
+  comp,
+  selectedIds,
+  poolById,
+  pending,
+  onSizeChange,
+  onCompChange,
+  onAuto,
+  onRemove,
+  onCancel,
+  onSubmit,
+}: {
+  mode: "assign" | "edit";
+  size: GameSize;
+  comp: Composition;
+  selectedIds: string[];
+  poolById: Map<string, PoolPlayer>;
+  pending: boolean;
+  onSizeChange: (s: GameSize) => void;
+  onCompChange: (c: Composition) => void;
+  onAuto: () => void;
+  onRemove: (id: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-1 flex-col gap-3">
+      {/* === 위: 선택된 멤버 === */}
+      <div className="text-xs text-muted-foreground">
+        선택 {selectedIds.length}/{size}명 · 아래 대기자에서 탭하여 선택
+      </div>
+
+      {selectedIds.length > 0 ? (
+        <ul className="flex flex-wrap gap-1.5">
+          {selectedIds.map((id) => {
+            const p = poolById.get(id);
+            if (!p) return null;
+            return (
+              <li
+                key={id}
+                className="flex items-center gap-1 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs"
+              >
+                {p.name}
+                <button
+                  type="button"
+                  onClick={() => onRemove(id)}
+                  className="rounded-full p-0.5 hover:bg-muted"
+                >
+                  <X className="size-3" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground">
+          선택된 멤버가 없습니다
+        </div>
+      )}
+
+      {/* === 아래: 컨트롤 === */}
+      <div className="mt-auto space-y-2 pt-2">
+        <div className="flex gap-2">
+          <Select
+            value={String(size)}
+            onValueChange={(v) => onSizeChange((v === "2" ? 2 : 4) as GameSize)}
+          >
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue>{SIZE_LABEL[size]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="4">복식 4명</SelectItem>
+              <SelectItem value="2">단식 2명</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={comp}
+            onValueChange={(v) => onCompChange((v ?? "free") as Composition)}
+          >
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue>{COMPOSITION_LABEL[comp]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {COMPOSITIONS.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {COMPOSITION_LABEL[c]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          onClick={onAuto}
+        >
+          <Sparkles className="size-4" />자동 배정 추천
+        </Button>
+
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            취소
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1"
+            disabled={pending || selectedIds.length !== size}
+            onClick={onSubmit}
+          >
+            {mode === "edit" ? (
+              <>
+                <Check className="size-4" />수정 완료
+              </>
+            ) : (
+              <>
+                <Play className="size-4" />시작
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
