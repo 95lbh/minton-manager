@@ -57,6 +57,26 @@ export async function setActiveClub(clubId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** 클럽 이름 변경. 클럽 멤버(관리자)면 가능(clubs update RLS). */
+export async function renameClub(
+  clubId: string,
+  name: string,
+): Promise<ActionResult> {
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: { message: "클럽 이름을 입력하세요." } };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clubs")
+    .update({ name: trimmed })
+    .eq("id", clubId);
+  if (error) {
+    return { ok: false, error: { message: "이름 변경에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 /** 참여 코드 재생성(이전 코드 무효화). 클럽 admin만(RPC에서 검증). */
 export async function regenerateJoinCode(
   clubId: string,
@@ -99,6 +119,23 @@ export async function joinClubByCode(code: string): Promise<ActionResult> {
     });
   }
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** 공동 관리자 내보내기. owner만, owner 본인은 불가(RPC에서 검증). */
+export async function removeClubAdmin(
+  clubId: string,
+  userId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_club_admin", {
+    _club_id: clubId,
+    _user_id: userId,
+  });
+  if (error) {
+    return { ok: false, error: { message: "내보내기에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath(ROUTES.settings);
   return { ok: true };
 }
 

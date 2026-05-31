@@ -8,6 +8,24 @@ export interface MyClub extends Club {
   role: ClubAdmin["role"];
 }
 
+export interface ClubAdminView {
+  user_id: string;
+  role: ClubAdmin["role"];
+  display_name: string | null;
+  email: string | null;
+  is_owner: boolean;
+}
+
+/** 클럽 관리자 목록(소유자/공동 관리자). 프로필 조인은 RPC(정의자)로 처리. */
+export async function listClubAdmins(clubId: string): Promise<ClubAdminView[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_club_admins", {
+    _club_id: clubId,
+  });
+  if (error || !data) return [];
+  return data as ClubAdminView[];
+}
+
 /** 현재 로그인 사용자가 속한 클럽 목록(역할 포함). */
 export async function getMyClubs(): Promise<MyClub[]> {
   const supabase = await createClient();

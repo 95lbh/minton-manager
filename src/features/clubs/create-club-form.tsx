@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { createClub } from "@/server/mutations/clubs";
 import { ROUTES } from "@/lib/constants";
 
-export function CreateClubForm({ isGuest = false }: { isGuest?: boolean }) {
+export function CreateClubForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
 const CARDS: { href: string; title: string; desc: string }[] = [
-  { href: ROUTES.attendance, title: "출석 관리", desc: "오늘의 출석 세션과 출석 체크" },
+  { href: ROUTES.attendance, title: "출석 관리", desc: "회원 및 게스트 출석 체크" },
   { href: ROUTES.games, title: "코트/게임", desc: "코트 배정과 게임 시작·종료" },
   { href: ROUTES.members, title: "회원 관리", desc: "회원 등록·수정·삭제" },
   { href: ROUTES.stats, title: "통계", desc: "회원별·클럽별 참여 현황" },

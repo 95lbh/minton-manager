@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveClub } from "@/server/queries/clubs";
+import { getActiveClub, listClubAdmins } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import { ClubSettings } from "@/features/clubs/club-settings";
 
@@ -14,6 +14,9 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   const isOwner = !!user && club.owner_id === user.id;
 
+  // 임시(비회원) 클럽은 공유 기능을 숨기므로 관리자 목록 조회 생략.
+  const admins = club.is_temporary ? [] : await listClubAdmins(club.id);
+
   return (
     <div>
       <h1 className="text-2xl font-bold">설정</h1>
@@ -24,6 +27,9 @@ export default async function SettingsPage() {
           clubName={club.name}
           joinCode={club.join_code}
           isOwner={isOwner}
+          isTemporary={club.is_temporary}
+          currentUserId={user?.id ?? ""}
+          admins={admins}
         />
       </div>
     </div>

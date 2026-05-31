@@ -52,6 +52,16 @@
 - RPC(0006): `join_club_by_code`(SECURITY DEFINER — 비멤버의 self-가입을 코드 검증으로만 허용), `regenerate_join_code`(클럽 admin), `delete_club`(owner 검증 — 멤버 허용인 일반 update 정책을 우회/강화해 owner만 soft delete).
 - 보안: definer 함수는 모두 **호출자(auth.uid()) 본인**만 대상으로 동작하고 코드/소유자 검증을 게이트로 둠. 코드는 추측 어려운 uuid이며 유출 의심 시 재생성으로 무효화.
 
+**관리자 관리(0007)**
+- 설정 탭에서 관리자 목록(소유자/공동 관리자)을 보고, **소유자만** 공동 관리자를 내보낼 수 있음.
+- RPC: `list_club_admins`(멤버만, profiles는 본인만 조회 가능한 RLS를 멤버 검증 후 정의자 조인으로 우회), `remove_club_admin`(소유자만·owner 본인 제거 불가).
+- **권한 안전장치**: `club_admins`의 insert/update/delete RLS를 **소유자 전용**으로 강화(삭제는 비소유자 본인 탈퇴만 예외). 공동 관리자가 소유자/다른 admin 행을 건드릴 수 없음. (가입은 `join_club_by_code` 정의자 함수가 처리하므로 정상 동작.)
+- **임시 클럽 공유 차단**: `is_temporary` 클럽은 설정에서 공유 코드/참여/관리자 목록 UI를 숨김 — 정식 전환 후 공유 가능.
+
+**임시 클럽 정리 정책(0007)**
+- 비회원 임시 클럽이 **마지막 활동(마지막 출석 세션 날짜, 없으면 생성일)로부터 7일** 지나면 soft delete.
+- `cleanup_temporary_clubs(_days int default 7)` 함수가 일괄 처리. **스케줄러 전용**(authenticated 권한 미부여) — Supabase pg_cron 또는 Edge Function cron에서 주기 호출 예정. (현재 함수만 정의, 스케줄 등록은 운영 단계에서.)
+
 ## 4. 폴더 구조 (계획)
 
 ```txt

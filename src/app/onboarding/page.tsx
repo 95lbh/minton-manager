@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
           </p>
         )}
         <div className="mt-6">
-          <CreateClubForm isGuest={isGuest} />
+          <CreateClubForm />
         </div>
       </div>
     </main>
