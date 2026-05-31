@@ -117,11 +117,30 @@ export interface Tournament {
   name: string;
   match_type: TournamentMatchType;
   structure: TournamentStructure | null;
+  games_per_player: number;
   status: TournamentStatus;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+}
+
+export interface TournamentMatch {
+  id: string;
+  club_id: string;
+  tournament_id: string;
+  order_no: number;
+  status: string;
+  created_at: string;
+}
+
+export interface TournamentMatchSide {
+  id: string;
+  club_id: string;
+  match_id: string;
+  team: TournamentTeam;
+  participant_id: string;
+  created_at: string;
 }
 
 export interface TournamentParticipant {

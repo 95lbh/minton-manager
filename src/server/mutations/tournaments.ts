@@ -6,6 +6,7 @@ import { getActiveClub } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 import { splitTeams } from "@/server/services/team-split";
+import { scheduleTeamGames } from "@/server/services/team-schedule";
 import type {
   MemberGender,
   TournamentMatchType,
@@ -183,6 +184,81 @@ export async function autoSplitTeams(tournamentId: string): Promise<ActionResult
       .update({ team: "white" })
       .in("id", result.white);
     if (e2) return { ok: false, error: { message: "팀 배정에 실패했습니다.", detail: e2.message } };
+  }
+
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
+/**
+ * 청팀/백팀 게임 자동 편성. 인당 보장 게임수(설정 저장) + 실력 매칭.
+ * 기존 게임은 모두 삭제 후 새로 생성.
+ */
+export async function generateTeamGames(
+  tournamentId: string,
+  gamesPerPlayer: number,
+): Promise<ActionResult> {
+  const n = Math.max(1, Math.floor(gamesPerPlayer));
+  const club = await getActiveClub();
+  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const supabase = await createClient();
+
+  const { data: t } = await supabase
+    .from("tournaments")
+    .select("match_type")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  const perSide: 1 | 2 = (t?.match_type as string) === "singles" ? 1 : 2;
+
+  const { data: parts, error: pErr } = await supabase
+    .from("tournament_participants")
+    .select("id, level, team")
+    .eq("tournament_id", tournamentId);
+  if (pErr || !parts) {
+    return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
+  }
+
+  const blue = parts.filter((p) => p.team === "blue").map((p) => ({ id: p.id as string, level: p.level as number | null }));
+  const white = parts.filter((p) => p.team === "white").map((p) => ({ id: p.id as string, level: p.level as number | null }));
+
+  const { games, reason } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
+  if (reason) return { ok: false, error: { message: reason } };
+  if (games.length === 0) {
+    return { ok: false, error: { message: "편성할 게임이 없습니다. 팀 배정을 확인하세요." } };
+  }
+
+  // 설정값 저장
+  await supabase.from("tournaments").update({ games_per_player: n }).eq("id", tournamentId);
+
+  // 기존 게임 삭제(사이드는 cascade)
+  await supabase.from("tournament_matches").delete().eq("tournament_id", tournamentId);
+
+  // 게임 insert → id 확보
+  const { data: inserted, error: mErr } = await supabase
+    .from("tournament_matches")
+    .insert(games.map((_, i) => ({ club_id: club.id, tournament_id: tournamentId, order_no: i + 1 })))
+    .select("id, order_no");
+  if (mErr || !inserted) {
+    return { ok: false, error: { message: "게임 생성에 실패했습니다.", detail: mErr?.message } };
+  }
+
+  const ordered = [...inserted].sort((a, b) => (a.order_no as number) - (b.order_no as number));
+  const sides: {
+    club_id: string;
+    match_id: string;
+    team: TournamentTeam;
+    participant_id: string;
+  }[] = [];
+  games.forEach((game, i) => {
+    const matchId = ordered[i].id as string;
+    game.blue.forEach((pid) => sides.push({ club_id: club.id, match_id: matchId, team: "blue", participant_id: pid }));
+    game.white.forEach((pid) => sides.push({ club_id: club.id, match_id: matchId, team: "white", participant_id: pid }));
+  });
+
+  const { error: sErr } = await supabase.from("tournament_match_sides").insert(sides);
+  if (sErr) {
+    return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
   }
 
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
