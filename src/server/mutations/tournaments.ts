@@ -7,6 +7,7 @@ import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 import { splitTeams } from "@/server/services/team-split";
 import { scheduleTeamGames } from "@/server/services/team-schedule";
+import { makePairs, roundRobin } from "@/server/services/league";
 import type {
   MemberGender,
   TournamentMatchType,
@@ -38,6 +39,84 @@ export async function createTournament(
 
   revalidatePath(ROUTES.tournaments);
   return { ok: true, data: { id: data.id as string } };
+}
+
+/**
+ * 리그전 대진 생성(round-robin). 단식=개인, 복식=실력 균형 페어.
+ * 사이드 A=blue, 사이드 B=white로 저장(재사용). 기존 게임은 삭제 후 재생성.
+ */
+export async function generateLeague(
+  tournamentId: string,
+): Promise<ActionResult<{ excluded: number }>> {
+  const club = await getActiveClub();
+  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const supabase = await createClient();
+
+  const { data: t } = await supabase
+    .from("tournaments")
+    .select("match_type")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  const isDoubles = (t?.match_type as string) !== "singles";
+
+  const { data: parts, error: pErr } = await supabase
+    .from("tournament_participants")
+    .select("id, level")
+    .eq("tournament_id", tournamentId);
+  if (pErr || !parts) {
+    return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
+  }
+
+  // 유닛 구성: 단식=개인 1명, 복식=페어 2명
+  let units: string[][];
+  let excluded = 0;
+  if (isDoubles) {
+    const { pairs, unpaired } = makePairs(
+      parts.map((p) => ({ id: p.id as string, level: p.level as number | null })),
+    );
+    units = pairs.map((pr) => [...pr]);
+    excluded = unpaired.length;
+  } else {
+    units = parts.map((p) => [p.id as string]);
+  }
+
+  if (units.length < 2) {
+    return { ok: false, error: { message: "리그를 만들려면 2팀(명) 이상이어야 합니다." } };
+  }
+
+  const rr = roundRobin(units.length);
+
+  await supabase.from("tournament_matches").delete().eq("tournament_id", tournamentId);
+
+  const { data: inserted, error: mErr } = await supabase
+    .from("tournament_matches")
+    .insert(rr.map((_, i) => ({ club_id: club.id, tournament_id: tournamentId, order_no: i + 1 })))
+    .select("id, order_no");
+  if (mErr || !inserted) {
+    return { ok: false, error: { message: "대진 생성에 실패했습니다.", detail: mErr?.message } };
+  }
+  const ordered = [...inserted].sort((a, b) => (a.order_no as number) - (b.order_no as number));
+
+  const sides: {
+    club_id: string;
+    match_id: string;
+    team: TournamentTeam;
+    participant_id: string;
+  }[] = [];
+  rr.forEach(([i, j], idx) => {
+    const matchId = ordered[idx].id as string;
+    units[i].forEach((pid) => sides.push({ club_id: club.id, match_id: matchId, team: "blue", participant_id: pid }));
+    units[j].forEach((pid) => sides.push({ club_id: club.id, match_id: matchId, team: "white", participant_id: pid }));
+  });
+
+  const { error: sErr } = await supabase.from("tournament_match_sides").insert(sides);
+  if (sErr) {
+    return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
+  }
+
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true, data: { excluded } };
 }
 
 /** 게임 결과(청/백 점수) 저장. match_id 기준 upsert. */

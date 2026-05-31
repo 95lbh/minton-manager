@@ -3,7 +3,12 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { getTournament, getMatches } from "@/server/queries/tournaments";
 import { TeamGamesManager } from "@/features/tournaments/team-games-manager";
-import { ROUTES, MATCH_TYPE_LABEL } from "@/lib/constants";
+import { LeagueManager } from "@/features/tournaments/league-manager";
+import {
+  ROUTES,
+  MATCH_TYPE_LABEL,
+  TOURNAMENT_STRUCTURE_LABEL,
+} from "@/lib/constants";
 
 export default async function TournamentGamesPage({
   params,
@@ -14,8 +19,9 @@ export default async function TournamentGamesPage({
   const tournament = await getTournament(id);
   if (!tournament) notFound();
 
-  const matches =
-    tournament.structure === "team_split" ? await getMatches(id) : [];
+  const hasGames =
+    tournament.structure === "team_split" || tournament.structure === "league";
+  const matches = hasGames ? await getMatches(id) : [];
 
   return (
     <div>
@@ -28,7 +34,8 @@ export default async function TournamentGamesPage({
 
       <h1 className="mt-2 text-2xl font-bold">게임 편성 / 결과</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {MATCH_TYPE_LABEL[tournament.match_type]} · 청팀/백팀
+        {MATCH_TYPE_LABEL[tournament.match_type]}
+        {tournament.structure ? ` · ${TOURNAMENT_STRUCTURE_LABEL[tournament.structure]}` : ""}
       </p>
 
       <div className="mt-6">
@@ -38,9 +45,11 @@ export default async function TournamentGamesPage({
             matches={matches}
             gamesPerPlayer={tournament.games_per_player}
           />
+        ) : tournament.structure === "league" ? (
+          <LeagueManager tournamentId={tournament.id} matches={matches} />
         ) : (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            청팀/백팀 형식에서만 게임 편성을 사용할 수 있습니다.
+            먼저 대회 형식(리그전/청팀백팀)을 선택하세요. (토너먼트는 준비 중)
           </p>
         )}
       </div>
