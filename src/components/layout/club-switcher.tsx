@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 import {
@@ -10,8 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CreateClubDialog } from "@/features/clubs/create-club-dialog";
 import { setActiveClub } from "@/server/mutations/clubs";
-import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { MyClub } from "@/server/queries/clubs";
 
@@ -24,6 +24,7 @@ export function ClubSwitcher({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const handleSelect = (clubId: string) => {
     if (clubId === activeClub.id) return;
@@ -59,10 +60,12 @@ export function ClubSwitcher({
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push(ROUTES.onboarding)}>
+        <DropdownMenuItem onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />새 클럽 만들기
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <CreateClubDialog open={createOpen} onOpenChange={setCreateOpen} />
     </DropdownMenu>
   );
 }
