@@ -11,14 +11,15 @@ if (!url || !key) {
 }
 console.log("✓ 환경변수 로드됨 (URL 호스트:", new URL(url).host + ")");
 
-// 1) Auth 설정: Google provider 활성화 여부
+// 1) Auth 설정: 소셜 provider / 익명 로그인 활성화 여부
+const mark = (on) => (on ? "활성화됨 ✅" : "비활성화 ❌");
 try {
   const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
   const s = await res.json();
-  console.log(
-    "✓ Auth 접속 OK · Google provider:",
-    s?.external?.google ? "활성화됨 ✅" : "비활성화 ❌",
-  );
+  console.log("✓ Auth 접속 OK");
+  console.log("  · Google 로그인:", mark(s?.external?.google));
+  console.log("  · Kakao 로그인:", mark(s?.external?.kakao));
+  console.log("  · 익명(비회원) 로그인:", mark(s?.external?.anonymous_users));
 } catch (e) {
   console.error("❌ Auth 설정 조회 실패:", e.message);
 }
@@ -63,4 +64,20 @@ if (colErr && /guest_gender|column/.test(colErr.message)) {
   console.log("❌ 게스트 성별/실력 컬럼 없음 — supabase/migrations/0003_attendance_guest_and_grade.sql 실행 필요");
 } else {
   console.log("✅ 게스트 성별/실력 컬럼 존재 (0003 적용됨)");
+}
+
+// 5) 0006: clubs.join_code 컬럼 + 공유 RPC 존재 여부
+const { error: jcErr } = await sb.from("clubs").select("join_code").limit(1);
+if (jcErr && /join_code|column|42703/.test(jcErr.message + (jcErr.code ?? ""))) {
+  console.log("❌ clubs.join_code 없음 — supabase/migrations/0006_club_sharing.sql 실행 필요");
+} else {
+  console.log("✅ clubs.join_code 존재 (0006 적용됨)");
+}
+const { error: joinRpcErr } = await sb.rpc("join_club_by_code", {
+  _code: "00000000-0000-0000-0000-000000000000",
+});
+if (joinRpcErr?.code === "PGRST202") {
+  console.log("❌ join_club_by_code RPC 없음 — 0006_club_sharing.sql 실행 필요");
+} else {
+  console.log("✅ join_club_by_code RPC 존재 (0006 적용됨)");
 }

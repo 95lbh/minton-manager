@@ -27,15 +27,30 @@
 
 ## 3. 인증 / 권한 흐름
 
-- 로그인 = **Google OAuth(Supabase Auth)** 우선. **추후 Naver / Kakao provider 추가** 예정(로그인 화면을 provider 목록 기반으로 구성해 확장 용이하게). 로그인 주체는 **운영자/스태프뿐**.
-- **Proxy**(`src/proxy.ts`, Next 16에서 middleware의 새 이름)가 매 요청 세션을 갱신하고 보호 경로를 가드. 공개 경로(`/login`, `/auth`, `/`)를 제외한 모든 경로가 보호 대상이며, 2차로 `(app)/layout.tsx` 서버 컴포넌트가 `getUser()`로 재확인 후 미로그인 시 `redirect`.
+- **첫 진입은 로그인 페이지가 아니라 비회원 시작이 기본.** `/`가 랜딩([features/auth/landing-auth.tsx](../src/features/auth/landing-auth.tsx))이며 메인 CTA가 **"비회원으로 바로 시작"**(`signInAnonymously`), 그 아래에 Google·Kakao 로그인(연동)을 보조로 둔다. 별도 `/login`은 `/`로 리다이렉트하는 호환용 별칭.
+- 로그인 = **Google · Kakao OAuth(Supabase Auth)**. 두 provider 모두 Supabase 기본 지원이라 `signInWithOAuth({provider})` 한 줄로 처리. (Naver는 Supabase 기본 미지원 → 커스텀 OAuth 플로우 필요해 보류.) 로그인 주체는 **운영자/스태프뿐**.
+- **Proxy**(`src/proxy.ts`, Next 16에서 middleware의 새 이름)가 매 요청 세션을 갱신하고 보호 경로를 가드. 공개 경로(`/login`, `/auth`, `/`)를 제외한 모든 경로가 보호 대상이며, **미인증 시 `/`(비회원 시작 랜딩)로** 리다이렉트. 2차로 `(app)/layout.tsx` 서버 컴포넌트가 `getUser()`로 재확인.
 - 권한 매핑:
   - `profiles` (auth user 1:1) — 표시 정보
   - `club_admins(club_id, user_id, role)` — 어떤 사용자가 어떤 클럽의 admin/staff인지
 - 모든 데이터 접근은 **RLS로 `club_id` 격리**(앱 코드 + DB 이중 방어). 상세 정책은 [database.md](database.md).
 
-### 비회원 일회성 운영
-계정 없이 운영하려면 **Supabase 익명 로그인(anonymous sign-in)** 사용 → `auth.uid()`가 생겨 RLS를 그대로 적용. 해당 클럽은 `clubs.is_temporary=true`로 표시하고 영속/통계는 제한. (정리 정책은 추후 확정)
+### 비회원 일회성 운영 (구현됨)
+계정 없이 운영하려면 **Supabase 익명 로그인(anonymous sign-in)** 사용 → `auth.uid()`가 생겨 RLS를 그대로 적용. 흐름:
+- 랜딩(`/`) 메인 CTA **"비회원으로 바로 시작"** → `signInAnonymously()` → 온보딩에서 클럽 생성.
+- `createClub`이 `user.is_anonymous`를 감지해 **`is_temporary=true`** 로 임시 클럽 생성(RPC `create_club`의 `_is_temporary`).
+- 앱 셸 상단에 **체험 모드 배너**(`is_temporary` 클럽일 때) — 데이터 보관·통계 제한 안내.
+- **정식 전환**: 배너의 "Google/Kakao로 전환" → `linkIdentity({provider})`로 익명 계정에 소셜 계정 연결 → 콜백(`/auth/callback`)에서 `is_anonymous`가 풀리면 본인 소유 임시 클럽을 `is_temporary=false`로 승격(데이터 유지).
+- Supabase 대시보드 선행 설정 필요: **Anonymous sign-ins 허용**, **Allow manual linking**(linkIdentity), Kakao provider. (임시 클럽 만료/정리 정책은 추후 확정)
+
+### 클럽 공유 / 공동 관리자 (구현됨, 0006)
+한 클럽을 여러 운영자가 함께 관리. 권한 2단계:
+- **최고 관리자(super admin) = `clubs.owner_id`**(최초 생성자) — 유일하게 **클럽 삭제** 가능.
+- **공동 관리자** = `club_admins` 행(role `admin`) — 운영 전반 가능, **삭제 불가**.
+
+흐름: 설정 탭에서 클럽당 단일 **`join_code`**(uuid, 재생성 가능)를 공유 → 다른 운영자가 로그인 후 코드 입력 → 같은 클럽의 공동 관리자로 합류.
+- RPC(0006): `join_club_by_code`(SECURITY DEFINER — 비멤버의 self-가입을 코드 검증으로만 허용), `regenerate_join_code`(클럽 admin), `delete_club`(owner 검증 — 멤버 허용인 일반 update 정책을 우회/강화해 owner만 soft delete).
+- 보안: definer 함수는 모두 **호출자(auth.uid()) 본인**만 대상으로 동작하고 코드/소유자 검증을 게이트로 둠. 코드는 추측 어려운 uuid이며 유출 의심 시 재생성으로 무효화.
 
 ## 4. 폴더 구조 (계획)
 
