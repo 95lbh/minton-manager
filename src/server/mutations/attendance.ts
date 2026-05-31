@@ -120,9 +120,26 @@ export async function setAttendeeStatus(
   return { ok: true };
 }
 
-/** 출석 취소(레코드 삭제). */
+/** 출석 취소(레코드 삭제). 게임 참여 이력이 있으면 막고 안내. */
 export async function removeRecord(recordId: string): Promise<ActionResult> {
   const supabase = await createClient();
+
+  // 게임에 들어간 적 있으면(진행 중/종료 무관) FK 때문에 삭제 불가 → 미리 막고 안내
+  const { count } = await supabase
+    .from("game_players")
+    .select("id", { count: "exact", head: true })
+    .eq("attendance_record_id", recordId);
+
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error: {
+        message:
+          "이미 게임 기록이 있어 출석을 취소할 수 없습니다. 대신 '집에감' 상태로 바꿔주세요.",
+      },
+    };
+  }
+
   const { error } = await supabase
     .from("attendance_records")
     .delete()
