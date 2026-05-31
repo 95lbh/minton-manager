@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Square, Play, X, Check } from "lucide-react";
+import { Sparkles, Square, Play, X, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,6 +19,9 @@ import {
   COMPOSITION_LABEL,
   type Composition,
 } from "@/lib/constants";
+import { ElapsedTime } from "@/features/games/elapsed-time";
+
+const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
 import {
   recommendGame,
   type GameSize,
@@ -169,20 +172,24 @@ export function CourtBoard({
               {/* 게임 중 */}
               {game ? (
                 <div className="mt-3 flex flex-1 flex-col">
-                  <ul className="flex-1 space-y-1">
+                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <Clock className="size-3.5" />
+                    <ElapsedTime startedAt={game.game.started_at} />
+                  </div>
+                  <div className="grid flex-1 grid-cols-2 gap-1.5">
                     {game.players.map((p) => (
-                      <li
+                      <div
                         key={p.attendanceRecordId}
-                        className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5 text-sm"
+                        className="flex flex-col justify-center rounded-md bg-muted/50 px-3 py-2 text-sm"
                       >
-                        <span className="font-medium">{p.name}</span>
+                        <span className="truncate font-medium">{p.name}</span>
                         <span className="text-xs text-muted-foreground">
                           {p.gender ? GENDER_LABEL[p.gender] : ""}
                           {p.level ? ` · ${GRADE_BY_VALUE[p.level]}` : ""}
                         </span>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                   <Button
                     variant="outline"
                     className="mt-3"
@@ -206,7 +213,7 @@ export function CourtBoard({
                       }
                     >
                       <SelectTrigger className="h-9 flex-1">
-                        <SelectValue />
+                        <SelectValue>{SIZE_LABEL[sizeOf(court.id)]}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="4">복식 4명</SelectItem>
@@ -223,7 +230,9 @@ export function CourtBoard({
                       }
                     >
                       <SelectTrigger className="h-9 flex-1">
-                        <SelectValue />
+                        <SelectValue>
+                          {COMPOSITION_LABEL[compOf(court.id)]}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {COMPOSITIONS.map((c) => (
@@ -310,7 +319,7 @@ export function CourtBoard({
       {/* 대기자 풀 */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-          대기자 ({pool.length}) · 오래 쉰 순
+          대기자 ({pool.length})
         </h2>
         {pool.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
