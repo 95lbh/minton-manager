@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveClub, listClubAdmins } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import { ClubSettings } from "@/features/clubs/club-settings";
+import { DataResetSettings } from "@/features/settings/data-reset";
+import { DevTools } from "@/features/settings/dev-tools";
 
 export default async function SettingsPage() {
   const club = await getActiveClub();
@@ -21,7 +23,7 @@ export default async function SettingsPage() {
     <div>
       <h1 className="text-2xl font-bold">설정</h1>
       <p className="mt-1 text-sm text-muted-foreground">클럽 공유 및 관리</p>
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 max-w-2xl space-y-6">
         <ClubSettings
           clubId={club.id}
           clubName={club.name}
@@ -31,6 +33,8 @@ export default async function SettingsPage() {
           currentUserId={user?.id ?? ""}
           admins={admins}
         />
+        <DataResetSettings />
+        <DevTools />
       </div>
     </div>
   );
