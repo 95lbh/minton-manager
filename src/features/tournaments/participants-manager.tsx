@@ -21,10 +21,12 @@ export function ParticipantsManager({
   tournamentId,
   participants,
   members,
+  locked = false,
 }: {
   tournamentId: string;
   participants: TournamentParticipant[];
   members: ClubMember[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -32,6 +34,7 @@ export function ParticipantsManager({
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const [pending, startTransition] = useTransition();
+  const disabled = pending || locked;
 
   const registeredMemberIds = useMemo(
     () => new Set(participants.filter((p) => p.member_id).map((p) => p.member_id)),
@@ -107,7 +110,7 @@ export function ParticipantsManager({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => run(() => removeParticipant(p.id, tournamentId), "")}
-                  disabled={pending}
+                  disabled={disabled}
                   aria-label="참가자 제거"
                 >
                   <X className="h-4 w-4" />
@@ -154,7 +157,7 @@ export function ParticipantsManager({
                         `${m.name} 추가`,
                       )
                     }
-                    disabled={pending}
+                    disabled={disabled}
                   >
                     <UserPlus className="mr-1 h-4 w-4" /> {m.name}
                   </Button>
@@ -177,13 +180,13 @@ export function ParticipantsManager({
             />
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">성별</Label>
-              <GenderToggle value={guestGender} onChange={setGuestGender} disabled={pending} />
+              <GenderToggle value={guestGender} onChange={setGuestGender} disabled={disabled} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">등급</Label>
-              <GradeToggle value={guestLevel} onChange={setGuestLevel} disabled={pending} />
+              <GradeToggle value={guestLevel} onChange={setGuestLevel} disabled={disabled} />
             </div>
-            <Button type="submit" variant="secondary" disabled={pending} className="w-full">
+            <Button type="submit" variant="secondary" disabled={disabled} className="w-full">
               <UserPlus className="size-4" /> 참가자 추가
             </Button>
           </form>

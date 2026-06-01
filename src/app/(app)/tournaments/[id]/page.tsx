@@ -4,17 +4,13 @@ import { ChevronLeft, ListChecks } from "lucide-react";
 import { getActiveClub } from "@/server/queries/clubs";
 import { getMembers } from "@/server/queries/members";
 import { getTournament, getParticipants } from "@/server/queries/tournaments";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ParticipantsManager } from "@/features/tournaments/participants-manager";
 import { StructureSelector } from "@/features/tournaments/structure-selector";
 import { TeamSplitManager } from "@/features/tournaments/team-split-manager";
+import { TournamentStatusControl } from "@/features/tournaments/tournament-status";
 import { DeleteTournamentButton } from "@/features/tournaments/delete-tournament-button";
-import {
-  ROUTES,
-  TOURNAMENT_STATUS_LABEL,
-  MATCH_TYPE_LABEL,
-} from "@/lib/constants";
+import { ROUTES, MATCH_TYPE_LABEL } from "@/lib/constants";
 
 export default async function TournamentDetailPage({
   params,
@@ -33,6 +29,8 @@ export default async function TournamentDetailPage({
     getMembers(club.id, false),
   ]);
 
+  const locked = tournament.status === "finished";
+
   return (
     <div>
       <Link
@@ -45,16 +43,20 @@ export default async function TournamentDetailPage({
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{tournament.name}</h1>
-          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{MATCH_TYPE_LABEL[tournament.match_type]}</span>
-            <Badge variant="secondary">
-              {TOURNAMENT_STATUS_LABEL[tournament.status]}
-            </Badge>
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {MATCH_TYPE_LABEL[tournament.match_type]}
+          </p>
         </div>
         <DeleteTournamentButton
           tournamentId={tournament.id}
           tournamentName={tournament.name}
+        />
+      </div>
+
+      <div className="mt-3">
+        <TournamentStatusControl
+          tournamentId={tournament.id}
+          status={tournament.status}
         />
       </div>
 
@@ -63,16 +65,19 @@ export default async function TournamentDetailPage({
           tournamentId={tournament.id}
           participants={participants}
           members={members}
+          locked={locked}
         />
         <StructureSelector
           tournamentId={tournament.id}
           structure={tournament.structure}
           participantCount={participants.length}
+          locked={locked}
         />
         {tournament.structure === "team_split" && (
           <TeamSplitManager
             tournamentId={tournament.id}
             participants={participants}
+            locked={locked}
           />
         )}
         {tournament.structure && (

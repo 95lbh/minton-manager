@@ -22,6 +22,7 @@ export default async function TournamentGamesPage({
 
   const hasGames = tournament.structure !== null;
   const matches = hasGames ? await getMatches(id) : [];
+  const locked = tournament.status === "finished";
 
   return (
     <div>
@@ -39,16 +40,22 @@ export default async function TournamentGamesPage({
       </p>
 
       <div className="mt-6">
+        {locked && (
+          <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            종료된 대회입니다. 결과가 고정되어 수정할 수 없습니다. (헤더에서 “종료 취소” 가능)
+          </p>
+        )}
         {tournament.structure === "team_split" ? (
           <TeamGamesManager
             tournamentId={tournament.id}
             matches={matches}
             gamesPerPlayer={tournament.games_per_player}
+            locked={locked}
           />
         ) : tournament.structure === "league" ? (
-          <LeagueManager tournamentId={tournament.id} matches={matches} />
+          <LeagueManager tournamentId={tournament.id} matches={matches} locked={locked} />
         ) : tournament.structure === "tournament" ? (
-          <TournamentManager tournamentId={tournament.id} matches={matches} />
+          <TournamentManager tournamentId={tournament.id} matches={matches} locked={locked} />
         ) : (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             먼저 대회 형식을 선택하세요.

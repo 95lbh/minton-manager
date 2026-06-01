@@ -13,6 +13,7 @@ import { getMatches } from "@/server/queries/tournaments";
 import type {
   MemberGender,
   TournamentMatchType,
+  TournamentStatus,
   TournamentStructure,
   TournamentTeam,
 } from "@/types/db";
@@ -297,6 +298,25 @@ export async function setMatchResult(
     return { ok: false, error: { message: "결과 저장에 실패했습니다.", detail: error.message } };
   }
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
+/** 대회 진행 상태 변경: 준비중(draft) / 진행중(ongoing) / 종료(finished). */
+export async function setTournamentStatus(
+  id: string,
+  status: TournamentStatus,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tournaments")
+    .update({ status })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false, error: { message: "상태 변경에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath(`${ROUTES.tournaments}/${id}`);
+  revalidatePath(ROUTES.tournaments);
   return { ok: true };
 }
 

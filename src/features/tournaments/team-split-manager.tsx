@@ -45,12 +45,15 @@ function TeamCard({
 export function TeamSplitManager({
   tournamentId,
   participants,
+  locked = false,
 }: {
   tournamentId: string;
   participants: TournamentParticipant[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const disabled = pending || locked;
 
   const blue = useMemo(() => participants.filter((p) => p.team === "blue"), [participants]);
   const white = useMemo(() => participants.filter((p) => p.team === "white"), [participants]);
@@ -86,7 +89,7 @@ export function TeamSplitManager({
             {unassigned > 0 && ` (미배정 ${unassigned}명)`}
           </p>
         </div>
-        <Button onClick={() => run(() => autoSplitTeams(tournamentId), "자동 편성했습니다.")} disabled={pending}>
+        <Button onClick={() => run(() => autoSplitTeams(tournamentId), "자동 편성했습니다.")} disabled={disabled}>
           <Shuffle className="mr-1 h-4 w-4" /> 자동 편성
         </Button>
       </div>
@@ -134,7 +137,7 @@ export function TeamSplitManager({
                         variant="outline"
                         className={active ? activeClass : ""}
                         onClick={() => move(p, t)}
-                        disabled={pending}
+                        disabled={disabled}
                       >
                         {TEAM_LABEL[t]}
                       </Button>

@@ -78,12 +78,15 @@ function MatchRow({
 export function LeagueManager({
   tournamentId,
   matches,
+  locked = false,
 }: {
   tournamentId: string;
   matches: MatchView[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const disabled = pending || locked;
 
   const standings = useMemo(() => {
     type Row = { label: string; played: number; wins: number; losses: number; pf: number; pa: number };
@@ -148,7 +151,7 @@ export function LeagueManager({
             모두 서로 한 번씩 겨룹니다. 복식은 실력 균형 페어로 자동 구성됩니다.
           </p>
         </div>
-        <Button onClick={generate} disabled={pending}>
+        <Button onClick={generate} disabled={disabled}>
           <Network className="mr-1 h-4 w-4" /> 대진 생성
         </Button>
       </div>
@@ -186,7 +189,7 @@ export function LeagueManager({
       {matches.length > 0 && (
         <ol className="mt-3 space-y-1">
           {matches.map((m) => (
-            <MatchRow key={m.id} match={m} pending={pending} onSave={saveResult} />
+            <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
           ))}
         </ol>
       )}

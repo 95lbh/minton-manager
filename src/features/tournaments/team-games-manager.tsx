@@ -76,14 +76,17 @@ export function TeamGamesManager({
   tournamentId,
   matches,
   gamesPerPlayer,
+  locked = false,
 }: {
   tournamentId: string;
   matches: MatchView[];
   gamesPerPlayer: number;
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [n, setN] = useState(gamesPerPlayer);
   const [pending, startTransition] = useTransition();
+  const disabled = pending || locked;
 
   const standings = useMemo(() => {
     let blueWins = 0,
@@ -149,10 +152,11 @@ export function TeamGamesManager({
             max={30}
             value={n}
             onChange={(e) => setN(Math.max(1, Number(e.target.value) || 1))}
+            disabled={disabled}
             className="w-28"
           />
         </div>
-        <Button onClick={generate} disabled={pending}>
+        <Button onClick={generate} disabled={disabled}>
           <ListChecks className="mr-1 h-4 w-4" /> 게임 편성
         </Button>
       </div>
@@ -180,7 +184,7 @@ export function TeamGamesManager({
 
           <ol className="mt-3 space-y-1">
             {matches.map((m) => (
-              <MatchRow key={m.id} match={m} pending={pending} onSave={saveResult} />
+              <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
             ))}
           </ol>
         </>

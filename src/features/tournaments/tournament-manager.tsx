@@ -99,12 +99,15 @@ function MatchRow({
 export function TournamentManager({
   tournamentId,
   matches,
+  locked = false,
 }: {
   tournamentId: string;
   matches: MatchView[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const disabled = pending || locked;
 
   const { rounds, maxRound, champion, canAdvance } = useMemo(() => {
     const byRound = new Map<number, MatchView[]>();
@@ -166,7 +169,7 @@ export function TournamentManager({
             if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?")) return;
             run(() => generateTournamentRound1(tournamentId), "대진을 생성했습니다.");
           }}
-          disabled={pending}
+          disabled={disabled}
         >
           <GitFork className="mr-1 h-4 w-4" /> 대진 생성
         </Button>
@@ -186,7 +189,7 @@ export function TournamentManager({
           </h3>
           <ol className="space-y-1">
             {ms.map((m) => (
-              <MatchRow key={m.id} match={m} pending={pending} onSave={saveResult} />
+              <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
             ))}
           </ol>
         </div>
@@ -197,7 +200,7 @@ export function TournamentManager({
           variant="outline"
           className="mt-4 w-full"
           onClick={() => run(() => generateNextRound(tournamentId), "다음 라운드를 만들었습니다.")}
-          disabled={pending || !canAdvance}
+          disabled={disabled || !canAdvance}
         >
           다음 라운드 생성 <ChevronRight className="ml-1 h-4 w-4" />
         </Button>

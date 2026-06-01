@@ -18,10 +18,12 @@ export function StructureSelector({
   tournamentId,
   structure,
   participantCount,
+  locked = false,
 }: {
   tournamentId: string;
   structure: TournamentStructure | null;
   participantCount: number;
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -53,7 +55,7 @@ export function StructureSelector({
             variant={structure === o.value ? "default" : "outline"}
             className="h-auto flex-col items-start gap-1 py-3 text-left"
             onClick={() => choose(o.value)}
-            disabled={pending}
+            disabled={pending || locked}
           >
             <span className="font-medium">{TOURNAMENT_STRUCTURE_LABEL[o.value]}</span>
             <span className="text-xs font-normal opacity-80">{o.desc}</span>
