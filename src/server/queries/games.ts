@@ -116,8 +116,11 @@ export async function getCourtViewData(
     else playersByGame.set(p.game_id, [p]);
   }
 
+  const gameById = new Map(games.map((g) => [g.id, g]));
+
   const gamesPlayed = new Map<string, number>();
   const lastSeq = new Map<string, number>();
+  const lastEndedAt = new Map<string, number>(); // 마지막으로 끝난 게임 종료 시각(ms)
   const activeRecordIds = new Set<string>(); // 진행 중 게임에 속한 출석자
 
   for (const p of players) {
@@ -130,6 +133,13 @@ export async function getCourtViewData(
     const prev = lastSeq.get(p.attendance_record_id) ?? 0;
     if (seq > prev) lastSeq.set(p.attendance_record_id, seq);
     if (p.is_active) activeRecordIds.add(p.attendance_record_id);
+    // 끝난 게임이면 종료 시각을 대기시작 후보로 기록
+    const g = gameById.get(p.game_id);
+    if (g && g.status !== "ongoing" && g.ended_at) {
+      const t = new Date(g.ended_at).getTime();
+      const prevEnd = lastEndedAt.get(p.attendance_record_id) ?? 0;
+      if (t > prevEnd) lastEndedAt.set(p.attendance_record_id, t);
+    }
   }
 
   // 진행 중 게임 뷰
@@ -186,6 +196,9 @@ export async function getCourtViewData(
     .filter((r) => !activeRecordIds.has(r.id))
     .map((r) => {
       const info = displayInfo(r);
+      // 대기 시작 = max(체크인 시각, 마지막 게임 종료 시각)
+      const checkedIn = new Date(r.checked_in_at).getTime();
+      const ended = lastEndedAt.get(r.id) ?? 0;
       return {
         id: r.id,
         name: info.name,
@@ -193,7 +206,7 @@ export async function getCourtViewData(
         skill: info.level,
         gamesPlayed: gamesPlayed.get(r.id) ?? 0,
         lastPlayedSeq: lastSeq.get(r.id) ?? null,
-        waitingSince: new Date(r.checked_in_at).getTime(),
+        waitingSince: Math.max(checkedIn, ended),
         isGuest: r.is_guest,
         status: r.status,
       };

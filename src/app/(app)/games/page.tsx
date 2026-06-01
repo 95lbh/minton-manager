@@ -32,12 +32,24 @@ export default async function GamesPage() {
 
   const data = await getCourtViewData(club.id, session.id);
 
+  const ongoingCount = data.ongoing.length;
+
   return (
     <div>
-      <h1 className="text-2xl font-bold">코트/게임</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {club.name} · 코트 {data.courts.length}개 · 대기 {data.pool.length}명
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">코트 현황</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{club.name}</span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" />
+            <span>코트 {data.courts.length}개</span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" />
+            <span className="text-accent">진행 {ongoingCount}</span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" />
+            <span>대기 {data.pool.length}명</span>
+          </div>
+        </div>
+      </div>
       <div className="mt-6">
         <CourtBoard sessionId={session.id} data={data} />
       </div>
