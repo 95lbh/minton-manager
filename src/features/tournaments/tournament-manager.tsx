@@ -34,7 +34,8 @@ function winnerSide(m: MatchView): "blue" | "white" | null {
   return m.scoreBlue > m.scoreWhite ? "blue" : "white";
 }
 
-function MatchRow({
+/** 브래킷 셀: 위(청)·아래(백) 2명 스택 + 가운데 점수. */
+function MatchCard({
   match,
   pending,
   onSave,
@@ -57,42 +58,38 @@ function MatchRow({
     onSave(match.id, na, nb);
   };
 
-  return (
-    <li className="flex flex-wrap items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm">
-      <span className={`min-w-0 flex-1 truncate ${win === "blue" ? "font-semibold" : ""}`}>
-        {names(match.blue) || <span className="text-muted-foreground">부전승</span>}
+  const sideRow = (
+    side: "blue" | "white",
+    people: { id: string; name: string }[],
+    score: string,
+    setScore: (v: string) => void,
+  ) => (
+    <div className="flex items-center gap-2">
+      <span className={`min-w-0 flex-1 truncate ${win === side ? "font-semibold" : ""}`}>
+        {names(people) || <span className="text-muted-foreground">부전승</span>}
       </span>
-      {bye ? (
-        <span className="text-xs text-muted-foreground">자동 진출</span>
-      ) : (
-        <>
-          <Input
-            type="number"
-            min={0}
-            value={a}
-            onChange={(e) => setA(e.target.value)}
-            onBlur={save}
-            disabled={pending}
-            className="h-8 w-12 text-center"
-            aria-label="왼쪽 점수"
-          />
-          <span className="text-xs text-muted-foreground">:</span>
-          <Input
-            type="number"
-            min={0}
-            value={b}
-            onChange={(e) => setB(e.target.value)}
-            onBlur={save}
-            disabled={pending}
-            className="h-8 w-12 text-center"
-            aria-label="오른쪽 점수"
-          />
-        </>
+      {!bye && (
+        <Input
+          type="number"
+          min={0}
+          value={score}
+          onChange={(e) => setScore(e.target.value)}
+          onBlur={save}
+          disabled={pending}
+          className="h-7 w-12 text-center"
+          aria-label={`${side === "blue" ? "위" : "아래"} 점수`}
+        />
       )}
-      <span className={`min-w-0 flex-1 truncate text-right ${win === "white" ? "font-semibold" : ""}`}>
-        {names(match.white) || <span className="text-muted-foreground">부전승</span>}
-      </span>
-    </li>
+    </div>
+  );
+
+  return (
+    <div className="rounded-lg border bg-background p-2 text-sm">
+      {sideRow("blue", match.blue, a, setA)}
+      <div className="my-1 border-t" />
+      {sideRow("white", match.white, b, setB)}
+      {bye && <p className="mt-1 text-center text-xs text-muted-foreground">자동 진출</p>}
+    </div>
   );
 }
 
@@ -182,18 +179,22 @@ export function TournamentManager({
         </div>
       )}
 
-      {rounds.map(({ r, matches: ms }) => (
-        <div key={r} className="mt-4">
-          <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
-            {roundLabel(ms.length)} ({r}라운드)
-          </h3>
-          <ol className="space-y-1">
-            {ms.map((m) => (
-              <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
-            ))}
-          </ol>
+      {rounds.length > 0 && (
+        <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+          {rounds.map(({ r, matches: ms }) => (
+            <div key={r} className="flex min-w-[220px] flex-1 flex-col">
+              <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
+                {roundLabel(ms.length)}
+              </h3>
+              <div className="flex flex-1 flex-col justify-around gap-3">
+                {ms.map((m) => (
+                  <MatchCard key={m.id} match={m} pending={disabled} onSave={saveResult} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {maxRound > 0 && !champion && (
         <Button
