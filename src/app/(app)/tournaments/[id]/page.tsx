@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ParticipantsManager } from "@/features/tournaments/participants-manager";
 import { StructureSelector } from "@/features/tournaments/structure-selector";
 import { TeamSplitManager } from "@/features/tournaments/team-split-manager";
+import { SeedEditor } from "@/features/tournaments/seed-editor";
 import { TournamentStatusControl } from "@/features/tournaments/tournament-status";
 import { DeleteTournamentButton } from "@/features/tournaments/delete-tournament-button";
 import { ROUTES, MATCH_TYPE_LABEL } from "@/lib/constants";
@@ -77,6 +78,14 @@ export default async function TournamentDetailPage({
           <TeamSplitManager
             tournamentId={tournament.id}
             participants={participants}
+            locked={locked}
+          />
+        )}
+        {tournament.structure === "tournament" && (
+          <SeedEditor
+            tournamentId={tournament.id}
+            participants={participants}
+            isDoubles={tournament.match_type === "doubles"}
             locked={locked}
           />
         )}

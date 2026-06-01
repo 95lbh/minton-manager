@@ -143,13 +143,18 @@ export async function generateTournamentRound1(
 
   const { data: parts, error: pErr } = await supabase
     .from("tournament_participants")
-    .select("id, level")
+    .select("id, level, seed")
     .eq("tournament_id", tournamentId);
   if (pErr || !parts) {
     return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
   }
 
   const levelOf = new Map(parts.map((p) => [p.id as string, (p.level as number | null) ?? DEFAULT_LEVEL]));
+  const seedOf = new Map(parts.map((p) => [p.id as string, p.seed as number | null]));
+  const hasManualSeed = parts.some((p) => p.seed != null);
+  // 수동 시드값(없으면 Infinity → 뒤로). 유닛 시드 = 멤버 시드 합.
+  const unitSeed = (ids: string[]) =>
+    ids.reduce((s, id) => s + (seedOf.get(id) ?? Number.MAX_SAFE_INTEGER), 0);
 
   let units: { ids: string[]; skill: number }[];
   let excluded = 0;
@@ -167,8 +172,12 @@ export async function generateTournamentRound1(
     return { ok: false, error: { message: "토너먼트는 2팀(명) 이상이어야 합니다." } };
   }
 
-  // 강한 순으로 시드 부여
-  units.sort((a, b) => b.skill - a.skill || (a.ids[0] < b.ids[0] ? -1 : 1));
+  // 수동 시드가 있으면 시드 순, 없으면 실력 순으로 시드 부여
+  if (hasManualSeed) {
+    units.sort((a, b) => unitSeed(a.ids) - unitSeed(b.ids) || b.skill - a.skill || (a.ids[0] < b.ids[0] ? -1 : 1));
+  } else {
+    units.sort((a, b) => b.skill - a.skill || (a.ids[0] < b.ids[0] ? -1 : 1));
+  }
   const pairs = seedPairs(units.length);
 
   await supabase.from("tournament_matches").delete().eq("tournament_id", tournamentId);
@@ -564,6 +573,25 @@ export async function setParticipantTeam(
 
   if (error) {
     return { ok: false, error: { message: "팀 변경에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  return { ok: true };
+}
+
+/** 토너먼트 시드 순서 저장. orderedIds 순서대로 seed=1,2,3… 부여. */
+export async function setSeedOrder(
+  tournamentId: string,
+  orderedIds: string[],
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const results = await Promise.all(
+    orderedIds.map((id, i) =>
+      supabase.from("tournament_participants").update({ seed: i + 1 }).eq("id", id),
+    ),
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) {
+    return { ok: false, error: { message: "시드 저장에 실패했습니다.", detail: failed.error.message } };
   }
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
   return { ok: true };
