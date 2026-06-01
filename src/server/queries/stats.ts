@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { operatingDate } from "@/lib/date";
 import type { MemberGender } from "@/types/db";
 
 /** 회원별 누적 통계 행 (오늘 한정 아님 — 전체 누적). */
@@ -71,7 +72,7 @@ export async function getMemberStats(clubId: string): Promise<MemberStatRow[]> {
 /** 클럽 요약 통계 (회원 수, 누적 게임, 오늘 출석/게임). */
 export async function getClubSummary(clubId: string): Promise<ClubSummary> {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operatingDate();
 
   const [membersRes, gamesRes, todaySessionRes] = await Promise.all([
     supabase

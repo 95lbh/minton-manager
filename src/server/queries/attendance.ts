@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { operatingDate } from "@/lib/date";
 import type { AttendanceSession, AttendanceRecord, MemberGender } from "@/types/db";
 
 /** 출석 레코드 + 회원 정보(있으면) 조인 뷰모델 */
@@ -16,7 +17,7 @@ export async function getTodaySession(
   clubId: string,
 ): Promise<AttendanceSession | null> {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operatingDate();
   const { data, error } = await supabase
     .from("attendance_sessions")
     .select("*")
@@ -38,7 +39,7 @@ export async function getOrCreateTodaySession(
   if (existing) return existing;
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = operatingDate();
   const { data, error } = await supabase
     .from("attendance_sessions")
     .insert({ club_id: clubId, session_date: today })
