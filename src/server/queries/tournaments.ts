@@ -47,6 +47,7 @@ export async function getParticipants(
 export interface MatchView {
   id: string;
   order_no: number;
+  round: number | null;
   status: string;
   blue: { id: string; name: string }[];
   white: { id: string; name: string }[];
@@ -65,9 +66,10 @@ export async function getMatches(tournamentId: string): Promise<MatchView[]> {
   const { data, error } = await supabase
     .from("tournament_matches")
     .select(
-      "id, order_no, status, sides:tournament_match_sides(team, participant:tournament_participants(id, name)), result:tournament_results(score_blue, score_white)",
+      "id, order_no, round, status, sides:tournament_match_sides(team, participant:tournament_participants(id, name)), result:tournament_results(score_blue, score_white)",
     )
     .eq("tournament_id", tournamentId)
+    .order("round", { ascending: true, nullsFirst: true })
     .order("order_no", { ascending: true });
 
   if (error || !data) return [];
@@ -77,6 +79,7 @@ export async function getMatches(tournamentId: string): Promise<MatchView[]> {
     data as unknown as {
       id: string;
       order_no: number;
+      round: number | null;
       status: string;
       sides: RawSide[];
       // match_id가 unique라 PostgREST가 1:1로 보고 객체(또는 null)로 반환할 수 있음.
@@ -89,6 +92,7 @@ export async function getMatches(tournamentId: string): Promise<MatchView[]> {
     return {
       id: m.id,
       order_no: m.order_no,
+      round: m.round,
       status: m.status,
       blue,
       white,

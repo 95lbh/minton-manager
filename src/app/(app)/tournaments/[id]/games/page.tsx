@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { getTournament, getMatches } from "@/server/queries/tournaments";
 import { TeamGamesManager } from "@/features/tournaments/team-games-manager";
 import { LeagueManager } from "@/features/tournaments/league-manager";
+import { TournamentManager } from "@/features/tournaments/tournament-manager";
 import {
   ROUTES,
   MATCH_TYPE_LABEL,
@@ -19,8 +20,7 @@ export default async function TournamentGamesPage({
   const tournament = await getTournament(id);
   if (!tournament) notFound();
 
-  const hasGames =
-    tournament.structure === "team_split" || tournament.structure === "league";
+  const hasGames = tournament.structure !== null;
   const matches = hasGames ? await getMatches(id) : [];
 
   return (
@@ -47,9 +47,11 @@ export default async function TournamentGamesPage({
           />
         ) : tournament.structure === "league" ? (
           <LeagueManager tournamentId={tournament.id} matches={matches} />
+        ) : tournament.structure === "tournament" ? (
+          <TournamentManager tournamentId={tournament.id} matches={matches} />
         ) : (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-            먼저 대회 형식(리그전/청팀백팀)을 선택하세요. (토너먼트는 준비 중)
+            먼저 대회 형식을 선택하세요.
           </p>
         )}
       </div>

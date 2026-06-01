@@ -62,7 +62,7 @@ export function StructureSelector({
       </div>
       {structure && (
         <p className="mt-3 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-          대진 편성(추천·수동)은 다음 단계에서 추가됩니다.
+          아래 “게임 편성 / 결과 페이지”에서 대진을 만들고 점수를 기록하세요.
         </p>
       )}
     </section>

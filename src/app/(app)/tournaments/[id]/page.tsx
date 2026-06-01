@@ -75,7 +75,7 @@ export default async function TournamentDetailPage({
             participants={participants}
           />
         )}
-        {(tournament.structure === "team_split" || tournament.structure === "league") && (
+        {tournament.structure && (
           <Link href={`${ROUTES.tournaments}/${id}/games`}>
             <Button className="w-full" size="lg">
               <ListChecks className="mr-1 h-4 w-4" /> 게임 편성 / 결과 페이지로
