@@ -12,10 +12,12 @@ export default async function MembersPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">회원 관리</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {club.name} · 총 {members.length}명
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">회원 관리</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{club.name}</span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" />
+            <span>총 {members.length}명</span>
+          </div>
         </div>
       </div>
       <div className="mt-6">

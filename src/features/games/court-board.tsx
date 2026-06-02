@@ -42,6 +42,7 @@ import {
 } from "@/lib/constants";
 import { ElapsedTime } from "@/features/games/elapsed-time";
 import { WaitTime } from "@/features/games/wait-time";
+import { genderAvatarClass } from "@/components/person-avatar";
 import { recommendGame, type GameSize } from "@/server/services/assignment";
 import {
   startGame,
@@ -60,16 +61,7 @@ const STATUS_BADGE: Record<string, string> = {
   left: "bg-zinc-200 text-zinc-600",
 };
 
-// 성별 톤(아바타 강조) — 남:하늘, 여:로즈, 그 외:중립
-const GENDER_AVATAR: Record<string, string> = {
-  male: "bg-sky-100 text-sky-700 border-sky-200",
-  female: "bg-rose-100 text-rose-700 border-rose-200",
-};
-function avatarCls(gender: string | null | undefined) {
-  return gender && GENDER_AVATAR[gender]
-    ? GENDER_AVATAR[gender]
-    : "bg-muted text-muted-foreground border-border";
-}
+const avatarCls = genderAvatarClass;
 
 export function CourtBoard({
   sessionId,

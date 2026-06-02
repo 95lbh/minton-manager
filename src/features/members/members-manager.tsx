@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GENDER_LABEL, SKILL_VALUE, GRADE_BY_VALUE } from "@/lib/constants";
+import { PersonAvatar } from "@/components/person-avatar";
 import {
   createMember,
   updateMember,
@@ -112,7 +113,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
         </Button>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-xl border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -135,7 +136,16 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
             )}
             {members.map((m) => (
               <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2.5">
+                    <PersonAvatar
+                      gender={m.gender}
+                      label={m.level ? GRADE_BY_VALUE[m.level] : null}
+                      className="size-8"
+                    />
+                    <span className="font-medium">{m.name}</span>
+                  </div>
+                </TableCell>
                 <TableCell>{m.gender ? GENDER_LABEL[m.gender] : "-"}</TableCell>
                 <TableCell>{m.level ? GRADE_BY_VALUE[m.level] : "-"}</TableCell>
                 <TableCell className="text-right">

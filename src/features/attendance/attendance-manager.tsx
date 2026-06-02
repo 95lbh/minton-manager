@@ -15,6 +15,7 @@ import {
   removeRecord,
 } from "@/server/mutations/attendance";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_VALUE } from "@/lib/constants";
+import { PersonAvatar } from "@/components/person-avatar";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
 
@@ -89,54 +90,71 @@ export function AttendanceManager({
   return (
     <div className="space-y-6">
       {/* 요약 */}
-      <div className="rounded-lg border bg-card px-4 py-3 text-sm">
-        출석 <b>{records.length}</b>명
-        <span className="text-muted-foreground">
-          {" "}
-          (회원 {memberCount} · 게스트 {guestCount})
+      <div className="flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
+        <span className="text-muted-foreground">출석</span>
+        <span className="text-xl font-bold tabular-nums text-primary">
+          {records.length}
+        </span>
+        <span className="text-muted-foreground">명</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          회원 {memberCount} · 게스트 {guestCount}
         </span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 출석자 목록 */}
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+          <h2 className="mb-2 text-sm font-bold tracking-tight">
             출석한 사람 ({records.length})
           </h2>
           {records.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               아직 출석한 사람이 없습니다.
             </div>
           ) : (
-            <ul className="flex flex-wrap gap-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {records.map((r) => {
                 const name = r.is_guest ? r.guest_name : r.member?.name;
+                const gender = r.is_guest ? r.guest_gender : r.member?.gender;
                 const level = r.is_guest ? r.guest_level : r.member?.level;
                 const grade = level ? GRADE_BY_VALUE[level] : null;
                 return (
-                  <li key={r.id}>
-                    <div className="flex items-center gap-2 rounded-full border bg-card py-1.5 pl-3 pr-1.5">
-                      <span className="text-sm font-medium">{name}</span>
-                      {r.is_guest && (
-                        <span className="text-xs text-amber-600">게스트</span>
-                      )}
-                      {grade && (
-                        <span className="text-xs text-muted-foreground">
-                          {grade}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          run(() => removeRecord(r.id), "출석을 취소했습니다.")
-                        }
-                        className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
-                        aria-label="출석 취소"
-                      >
-                        <X className="size-4" />
-                      </button>
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border bg-card p-2"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <PersonAvatar
+                        gender={gender}
+                        label={grade}
+                        className="size-8"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold leading-tight">
+                          {name}
+                          {r.is_guest && (
+                            <span className="ml-1 text-xs font-medium text-amber-600">
+                              게스트
+                            </span>
+                          )}
+                        </p>
+                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                          {gender ? GENDER_LABEL[gender] : ""}
+                          {grade ? ` · ${grade}` : ""}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() =>
+                        run(() => removeRecord(r.id), "출석을 취소했습니다.")
+                      }
+                      className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
+                      aria-label="출석 취소"
+                    >
+                      <X className="size-4" />
+                    </button>
                   </li>
                 );
               })}
@@ -146,7 +164,7 @@ export function AttendanceManager({
 
         {/* 출석 추가 */}
         <section>
-          <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+          <h2 className="mb-2 text-sm font-bold tracking-tight">
             회원 출석 체크
           </h2>
           <div className="relative">
@@ -175,10 +193,15 @@ export function AttendanceManager({
                     onClick={() =>
                       run(() => checkInMember(session.id, m.id), `${m.name} 출석`)
                     }
-                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-50"
+                    className="flex w-full items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:bg-muted disabled:opacity-50"
                   >
+                    <PersonAvatar
+                      gender={m.gender}
+                      label={m.level ? GRADE_BY_VALUE[m.level] : null}
+                      className="size-8"
+                    />
                     <span className="font-medium">{m.name}</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       {m.gender ? GENDER_LABEL[m.gender] : ""}
                       {m.level ? ` · ${GRADE_BY_VALUE[m.level]}` : ""}
                     </span>

@@ -22,10 +22,12 @@ export default async function AttendancePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">출석 관리</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {club.name} · {today}
-      </p>
+      <h1 className="text-2xl font-bold tracking-tight">출석 관리</h1>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>{club.name}</span>
+        <span className="size-1 rounded-full bg-muted-foreground/40" />
+        <span>{today}</span>
+      </div>
       {!session ? (
         <p className="mt-10 rounded-xl border border-dashed p-12 text-center text-sm text-muted-foreground">
           출석 세션을 준비하지 못했습니다. 잠시 후 다시 시도해주세요.
