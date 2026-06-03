@@ -1,4 +1,4 @@
-# Architecture — 배드민턴 매니저
+# Architecture — 마이민턴 (myminton)
 
 > 상태: 초안 (v0.1) · 2026-05-30 · 전제: [prd.md](prd.md)
 

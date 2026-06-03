@@ -1,4 +1,4 @@
-# Database — 배드민턴 매니저
+# Database — 마이민턴 (myminton)
 
 > 상태: 초안 (v0.1) · 2026-05-30 · 전제: [prd.md](prd.md), [architecture.md](architecture.md)
 > 아래 SQL은 `supabase/migrations`에 들어갈 초안. MVP 1단계(일반 운영)를 우선 확정하고, 대회 모드는 2단계에서 구체화한다.
