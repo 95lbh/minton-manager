@@ -4,12 +4,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { PwaRegister } from "@/components/pwa-register";
 
 export const metadata: Metadata = {
-  title: "배드민턴 매니저",
-  description: "배드민턴 동호회 운영 — 출석·코트 배정·게임·통계",
-  applicationName: "배드민턴 매니저",
+  title: "마이민턴 (myminton)",
+  description: "마이민턴 — 배드민턴 동호회 운영(출석·코트 배정·게임·통계)",
+  applicationName: "마이민턴",
   appleWebApp: {
     capable: true,
-    title: "배드민턴 매니저",
+    title: "마이민턴",
     statusBarStyle: "default",
   },
   icons: {

@@ -96,4 +96,4 @@ export const COMPOSITION_LABEL: Record<Composition, string> = {
   mixed: "혼복",
 };
 
-export const APP_NAME = "배드민턴 매니저";
+export const APP_NAME = "마이민턴";

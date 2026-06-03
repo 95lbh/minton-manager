@@ -89,7 +89,7 @@ export function DevTools() {
         tabIndex={-1}
         className="mx-auto mt-8 block select-none text-center text-[10px] text-muted-foreground/30"
       >
-        honey_minton
+        myminton
       </button>
     );
   }
