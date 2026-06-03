@@ -2,22 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveClub } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 
-/** 회원 출석 체크. */
+/**
+ * 회원 출석 체크.
+ * club_id 는 클라이언트가 가진 session.club_id 를 그대로 받는다(별도 클럽 조회 왕복 제거).
+ * 권한은 RLS(is_club_member)가 보장하므로 임의 클럽에 삽입할 수 없다.
+ */
 export async function checkInMember(
   sessionId: string,
   memberId: string,
+  clubId: string,
 ): Promise<ActionResult> {
-  const club = await getActiveClub();
-  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
-
   const supabase = await createClient();
   const { error } = await supabase.from("attendance_records").insert({
     session_id: sessionId,
-    club_id: club.id,
+    club_id: clubId,
     member_id: memberId,
     is_guest: false,
   });
@@ -29,16 +30,14 @@ export async function checkInMember(
   return { ok: true };
 }
 
-/** 게스트(비회원) 출석 추가. 이름 + 성별/실력(선택). */
+/** 게스트(비회원) 출석 추가. 이름 + 성별/실력(선택). club_id 는 클라이언트가 전달. */
 export async function addGuest(
   sessionId: string,
+  clubId: string,
   guest: { name: string; gender?: "male" | "female" | null; level?: number | null },
 ): Promise<ActionResult> {
   const name = guest.name.trim();
   if (!name) return { ok: false, error: { message: "게스트 이름을 입력하세요." } };
-
-  const club = await getActiveClub();
-  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
 
   const gender =
     guest.gender === "male" || guest.gender === "female" ? guest.gender : null;
@@ -50,7 +49,7 @@ export async function addGuest(
   const supabase = await createClient();
   const { error } = await supabase.from("attendance_records").insert({
     session_id: sessionId,
-    club_id: club.id,
+    club_id: clubId,
     member_id: null,
     guest_name: name,
     guest_gender: gender,

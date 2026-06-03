@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,25 @@ import { PersonAvatar } from "@/components/person-avatar";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
 
+// 낙관적 출석 갱신: 서버 응답 전 목록을 즉시 반영(이후 revalidate로 동기화).
+type RecAction =
+  | { type: "add"; record: AttendanceRecordView }
+  | { type: "remove"; id: string };
+
+function recordsReducer(
+  state: AttendanceRecordView[],
+  action: RecAction,
+): AttendanceRecordView[] {
+  switch (action.type) {
+    case "add":
+      return [...state, action.record];
+    case "remove":
+      return state.filter((r) => r.id !== action.id);
+    default:
+      return state;
+  }
+}
+
 export function AttendanceManager({
   session,
   members,
@@ -28,17 +46,17 @@ export function AttendanceManager({
   members: ClubMember[];
   records: AttendanceRecordView[];
 }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const [pending, startTransition] = useTransition();
+  const [optRecords, applyOptimistic] = useOptimistic(records, recordsReducer);
 
   // 이미 출석한 회원 id 집합
   const attendedMemberIds = useMemo(
-    () => new Set(records.filter((r) => r.member_id).map((r) => r.member_id)),
-    [records],
+    () => new Set(optRecords.filter((r) => r.member_id).map((r) => r.member_id)),
+    [optRecords],
   );
 
   // 출석 후보(미출석 회원) — 검색 필터
@@ -52,20 +70,22 @@ export function AttendanceManager({
   const run = (
     fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
     successMsg: string,
+    optimistic?: RecAction,
   ) => {
     startTransition(async () => {
+      if (optimistic) applyOptimistic(optimistic);
       const res = await fn();
       if (res.ok) {
         if (successMsg) toast.success(successMsg);
-        router.refresh();
+        // 서버 액션의 revalidatePath로 자동 갱신 → router.refresh() 불필요.
       } else {
         toast.error(res.error?.message ?? "오류가 발생했습니다.");
       }
     });
   };
 
-  const memberCount = records.filter((r) => !r.is_guest).length;
-  const guestCount = records.filter((r) => r.is_guest).length;
+  const memberCount = optRecords.filter((r) => !r.is_guest).length;
+  const guestCount = optRecords.filter((r) => r.is_guest).length;
 
   const submitGuest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,14 +93,28 @@ export function AttendanceManager({
       toast.error("게스트 이름을 입력하세요.");
       return;
     }
+    const name = guestName.trim();
+    const gender = guestGender === "none" ? null : guestGender;
+    const level = guestLevel === "none" ? null : SKILL_VALUE[guestLevel];
     run(
-      () =>
-        addGuest(session.id, {
-          name: guestName,
-          gender: guestGender === "none" ? null : guestGender,
-          level: guestLevel === "none" ? null : SKILL_VALUE[guestLevel],
-        }),
+      () => addGuest(session.id, session.club_id, { name, gender, level }),
       "게스트를 추가했습니다.",
+      {
+        type: "add",
+        record: {
+          id: `opt-guest-${name}-${optRecords.length}`,
+          session_id: session.id,
+          club_id: session.club_id,
+          member_id: null,
+          guest_name: name,
+          guest_gender: gender,
+          guest_level: level,
+          is_guest: true,
+          checked_in_at: new Date().toISOString(),
+          status: "present",
+          member: null,
+        },
+      },
     );
     setGuestName("");
     setGuestGender("none");
@@ -93,7 +127,7 @@ export function AttendanceManager({
       <div className="flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm shadow-sm">
         <span className="text-muted-foreground">출석</span>
         <span className="text-xl font-bold tabular-nums text-primary">
-          {records.length}
+          {optRecords.length}
         </span>
         <span className="text-muted-foreground">명</span>
         <span className="ml-auto text-xs text-muted-foreground">
@@ -105,15 +139,15 @@ export function AttendanceManager({
         {/* 출석자 목록 */}
         <section>
           <h2 className="mb-2 text-sm font-bold tracking-tight">
-            출석한 사람 ({records.length})
+            출석한 사람 ({optRecords.length})
           </h2>
-          {records.length === 0 ? (
+          {optRecords.length === 0 ? (
             <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               아직 출석한 사람이 없습니다.
             </div>
           ) : (
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {records.map((r) => {
+              {optRecords.map((r) => {
                 const name = r.is_guest ? r.guest_name : r.member?.name;
                 const gender = r.is_guest ? r.guest_gender : r.member?.gender;
                 const level = r.is_guest ? r.guest_level : r.member?.level;
@@ -148,7 +182,10 @@ export function AttendanceManager({
                       type="button"
                       disabled={pending}
                       onClick={() =>
-                        run(() => removeRecord(r.id), "출석을 취소했습니다.")
+                        run(() => removeRecord(r.id), "출석을 취소했습니다.", {
+                          type: "remove",
+                          id: r.id,
+                        })
                       }
                       className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
                       aria-label="출석 취소"
@@ -189,9 +226,31 @@ export function AttendanceManager({
                 <li key={m.id}>
                   <button
                     type="button"
-                    disabled={pending}
                     onClick={() =>
-                      run(() => checkInMember(session.id, m.id), `${m.name} 출석`)
+                      run(
+                        () => checkInMember(session.id, m.id, session.club_id),
+                        `${m.name} 출석`,
+                        {
+                        type: "add",
+                        record: {
+                          id: `opt-${m.id}`,
+                          session_id: session.id,
+                          club_id: session.club_id,
+                          member_id: m.id,
+                          guest_name: null,
+                          guest_gender: null,
+                          guest_level: null,
+                          is_guest: false,
+                          checked_in_at: new Date().toISOString(),
+                          status: "present",
+                          member: {
+                            id: m.id,
+                            name: m.name,
+                            gender: m.gender,
+                            level: m.level,
+                          },
+                        },
+                      })
                     }
                     className="flex w-full items-center gap-2.5 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:bg-muted disabled:opacity-50"
                   >
