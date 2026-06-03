@@ -106,6 +106,11 @@ export function TeamGamesManager({
   }, [matches]);
 
   const generate = () => {
+    if (
+      matches.length > 0 &&
+      !confirm("다시 편성하면 기존 대진·점수가 모두 새로 만들어집니다. 계속할까요?")
+    )
+      return;
     startTransition(async () => {
       const res = await generateTeamGames(tournamentId, n);
       if (res.ok) {

@@ -167,7 +167,7 @@ export default async function StatsPage() {
       <h2 className="mt-8 mb-2 text-sm font-bold tracking-tight">
         회원별 누적 참여
       </h2>
-      <div className="overflow-hidden rounded-xl border shadow-sm">
+      <div className="overflow-x-auto rounded-xl border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>

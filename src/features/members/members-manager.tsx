@@ -111,7 +111,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border shadow-sm">
+      <div className="overflow-x-auto rounded-xl border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -150,7 +150,8 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
+                      aria-label={`${m.name} 수정`}
                       onClick={() => openEdit(m)}
                       disabled={pending}
                     >
@@ -158,7 +159,8 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon-sm"
+                      aria-label={`${m.name} 삭제`}
                       onClick={() => setDeleting(m)}
                       disabled={pending}
                     >

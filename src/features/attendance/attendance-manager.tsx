@@ -187,7 +187,7 @@ export function AttendanceManager({
                           id: r.id,
                         })
                       }
-                      className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
+                      className="shrink-0 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
                       aria-label="출석 취소"
                     >
                       <X className="size-4" />
@@ -210,6 +210,7 @@ export function AttendanceManager({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="회원 이름 검색"
+              aria-label="회원 이름 검색"
               className="pl-9"
             />
           </div>

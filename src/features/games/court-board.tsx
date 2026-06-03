@@ -608,7 +608,7 @@ export function CourtBoard({
                                   [court.id]: court.name,
                                 }))
                               }
-                              className="rounded-md p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+                              className="rounded-md p-2 text-muted-foreground hover:bg-muted disabled:opacity-50"
                               aria-label="코트 수정"
                             >
                               <Pencil className="size-4" />
@@ -623,7 +623,7 @@ export function CourtBoard({
                                     "코트를 삭제했습니다.",
                                   )
                                 }
-                                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
+                                className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
                                 aria-label="코트 삭제"
                               >
                                 <Trash2 className="size-4" />

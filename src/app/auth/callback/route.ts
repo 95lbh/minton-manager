@@ -6,7 +6,14 @@ import { ROUTES } from "@/lib/constants";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const redirect = searchParams.get("redirect") ?? ROUTES.dashboard;
+  // 오픈 리다이렉트 방어: 내부 경로(/...)만 허용, 프로토콜-상대(//, /\) 차단.
+  const rawRedirect = searchParams.get("redirect") ?? ROUTES.dashboard;
+  const redirect =
+    rawRedirect.startsWith("/") &&
+    !rawRedirect.startsWith("//") &&
+    !rawRedirect.startsWith("/\\")
+      ? rawRedirect
+      : ROUTES.dashboard;
 
   if (code) {
     const supabase = await createClient();

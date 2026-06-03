@@ -134,6 +134,7 @@ export function ParticipantsManager({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="이름 검색"
+              aria-label="참가자 이름 검색"
               className="pl-8"
             />
           </div>
