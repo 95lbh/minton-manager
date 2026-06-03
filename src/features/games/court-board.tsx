@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   Sparkles,
@@ -51,7 +50,12 @@ import {
 } from "@/server/mutations/games";
 import { addCourt, deleteCourt, renameCourt } from "@/server/mutations/courts";
 import { setAttendeeStatus } from "@/server/mutations/attendance";
-import type { CourtViewData, PoolPlayer } from "@/server/queries/games";
+import type {
+  CourtViewData,
+  PoolPlayer,
+  OngoingGameView,
+} from "@/server/queries/games";
+import type { Game } from "@/types/db";
 
 const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
 
@@ -63,6 +67,68 @@ const STATUS_BADGE: Record<string, string> = {
 
 const avatarCls = genderAvatarClass;
 
+// ── 낙관적 UI ──────────────────────────────────────────────
+// 서버 응답 전에 화면을 즉시 갱신한다. 서버 액션의 revalidate가 돌아오면
+// useOptimistic 이 실제 데이터로 자연 동기화한다.
+type OptAction =
+  | { type: "start"; courtId: string; gameId: string; players: PoolPlayer[] }
+  | { type: "end"; gameId: string }
+  | { type: "status"; recordId: string; status: string };
+
+/** 대기자(PoolPlayer) → 진행중 게임 표시용 플레이어. 앞 절반=1팀, 뒤 절반=2팀. */
+function toOngoingPlayers(players: PoolPlayer[]) {
+  const half = Math.ceil(players.length / 2);
+  return players.map((p, i) => ({
+    attendanceRecordId: p.id,
+    name: p.name,
+    gender: p.gender ?? null,
+    level: p.skill ?? null,
+    team: i < half ? 1 : 2,
+  }));
+}
+
+function optimisticReducer(
+  state: CourtViewData,
+  action: OptAction,
+): CourtViewData {
+  switch (action.type) {
+    case "start": {
+      const ids = new Set(action.players.map((p) => p.id));
+      // 표시에 필요한 필드만 채운 임시 게임(서버 revalidate로 곧 대체됨).
+      const stub = {
+        id: action.gameId,
+        court_id: action.courtId,
+        status: "ongoing",
+        started_at: new Date().toISOString(),
+      } as unknown as Game;
+      const game: OngoingGameView = {
+        game: stub,
+        players: toOngoingPlayers(action.players),
+      };
+      return {
+        ...state,
+        ongoing: [...state.ongoing, game],
+        pool: state.pool.filter((p) => !ids.has(p.id)),
+      };
+    }
+    case "end":
+      // 카드만 즉시 제거. 대기열 복귀는 revalidate가 정확히 채운다.
+      return {
+        ...state,
+        ongoing: state.ongoing.filter((o) => o.game.id !== action.gameId),
+      };
+    case "status":
+      return {
+        ...state,
+        pool: state.pool.map((p) =>
+          p.id === action.recordId ? { ...p, status: action.status } : p,
+        ),
+      };
+    default:
+      return state;
+  }
+}
+
 export function CourtBoard({
   sessionId,
   data,
@@ -70,16 +136,17 @@ export function CourtBoard({
   sessionId: string;
   data: CourtViewData;
 }) {
-  const router = useRouter();
-  const { courts, ongoing, pool, currentSeq, history } = data;
+  const [optData, applyOptimistic] = useOptimistic(data, optimisticReducer);
+  const { courts, ongoing, pool, currentSeq, history } = optData;
   const [pending, startTransition] = useTransition();
 
   const [gameSize, setGameSize] = useState<Record<string, GameSize>>({});
   const [composition, setComposition] = useState<Record<string, Composition>>({});
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
-  // 코트별 모드: 'assign'(빈 코트 배정) | 'edit'(진행중 게임 멤버/종류 수정)
+  // 코트별 패널 모드:
+  //  'manual'(직접 배정: 수동 선택만) | 'auto'(자동 배정: 성별구성+자동추천) | 'edit'(진행중 게임 수정)
   const [openCourt, setOpenCourt] = useState<string | null>(null);
-  const [openMode, setOpenMode] = useState<"assign" | "edit">("assign");
+  const [openMode, setOpenMode] = useState<"manual" | "auto" | "edit">("manual");
   // 코트 이름 편집 상태
   const [renaming, setRenaming] = useState<Record<string, string>>({});
 
@@ -102,7 +169,7 @@ export function CourtBoard({
   );
 
   const sizeOf = (courtId: string): GameSize => gameSize[courtId] ?? 4;
-  const compOf = (courtId: string): Composition => composition[courtId] ?? "free";
+  const compOf = (courtId: string): Composition => composition[courtId] ?? "mens";
   const selOf = (courtId: string): Set<string> => selected[courtId] ?? new Set();
 
   const toggleSelect = (courtId: string, recordId: string) => {
@@ -125,14 +192,23 @@ export function CourtBoard({
   const run = (
     fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
     successMsg: string,
-    onOk?: () => void,
+    opts?: {
+      /** 즉시(awati 전) 적용할 낙관적 갱신 */
+      optimistic?: OptAction;
+      /** 즉시 실행(패널 닫기 등 UI 반응) */
+      onStart?: () => void;
+      /** 성공 후 실행 */
+      onSuccess?: () => void;
+    },
   ) => {
     startTransition(async () => {
+      opts?.onStart?.();
+      if (opts?.optimistic) applyOptimistic(opts.optimistic);
       const res = await fn();
       if (res.ok) {
         if (successMsg) toast.success(successMsg);
-        onOk?.();
-        router.refresh();
+        opts?.onSuccess?.();
+        // revalidatePath(서버 액션)로 화면이 자동 갱신되므로 router.refresh() 불필요.
       } else {
         toast.error(res.error?.message ?? "오류가 발생했습니다.");
       }
@@ -161,8 +237,8 @@ export function CourtBoard({
     else toast.success("자동 배정 추천 완료");
   };
 
-  const openAssign = (courtId: string) => {
-    setOpenMode("assign");
+  const openAssign = (courtId: string, mode: "manual" | "auto") => {
+    setOpenMode(mode);
     setOpenCourt(courtId);
     setSelected((p) => ({ ...p, [courtId]: new Set() }));
   };
@@ -194,9 +270,19 @@ export function CourtBoard({
       toast.error(`${sizeOf(courtId)}명을 채워주세요. (현재 ${ids.length}명)`);
       return;
     }
-    run(() => startGame(sessionId, courtId, ids), "게임을 시작했습니다.", () =>
-      closePanel(courtId),
-    );
+    const players = ids
+      .map((id) => poolById.get(id))
+      .filter((p): p is PoolPlayer => !!p);
+    run(() => startGame(sessionId, courtId, ids), "게임을 시작했습니다.", {
+      // 즉시: 패널 닫고 코트에 게임 표시 + 대기열에서 제거
+      onStart: () => closePanel(courtId),
+      optimistic: {
+        type: "start",
+        courtId,
+        gameId: `opt-${courtId}`,
+        players,
+      },
+    });
   };
 
   const saveEdit = (courtId: string, gameId: string) => {
@@ -205,9 +291,9 @@ export function CourtBoard({
       toast.error(`${sizeOf(courtId)}명을 채워주세요. (현재 ${ids.length}명)`);
       return;
     }
-    run(() => replaceGamePlayers(gameId, ids), "게임을 수정했습니다.", () =>
-      closePanel(courtId),
-    );
+    run(() => replaceGamePlayers(gameId, ids), "게임을 수정했습니다.", {
+      onStart: () => closePanel(courtId),
+    });
   };
 
   const lockedElsewhere = (courtId: string) => {
@@ -327,6 +413,7 @@ export function CourtBoard({
                   run(
                     () => setAttendeeStatus(p.id, s),
                     `${p.name} · ${ATTENDEE_STATUS_LABEL[s]}`,
+                    { optimistic: { type: "status", recordId: p.id, status: s } },
                   )
                 }
               >
@@ -453,12 +540,14 @@ export function CourtBoard({
                         run(
                           () => renameCourt(court.id, renaming[court.id]),
                           "코트 이름을 변경했습니다.",
-                          () =>
-                            setRenaming((p) => {
-                              const n = { ...p };
-                              delete n[court.id];
-                              return n;
-                            }),
+                          {
+                            onSuccess: () =>
+                              setRenaming((p) => {
+                                const n = { ...p };
+                                delete n[court.id];
+                                return n;
+                              }),
+                          },
                         );
                       }}
                     >
@@ -551,7 +640,8 @@ export function CourtBoard({
                 <div className="flex flex-1 flex-col p-4">
                   {isOpen ? (
                     <AssignPanel
-                      mode={openMode}
+                      isEdit={openMode === "edit"}
+                      showAuto={openMode !== "manual"}
                       size={sizeOf(court.id)}
                       comp={compOf(court.id)}
                       selectedIds={[...selOf(court.id)]}
@@ -625,7 +715,9 @@ export function CourtBoard({
                           className="flex-1"
                           disabled={pending}
                           onClick={() =>
-                            run(() => endGame(game.game.id), "게임을 종료했습니다.")
+                            run(() => endGame(game.game.id), "게임을 종료했습니다.", {
+                              optimistic: { type: "end", gameId: game.game.id },
+                            })
                           }
                         >
                           <Square className="size-4" />종료
@@ -633,15 +725,22 @@ export function CourtBoard({
                       </div>
                     </div>
                   ) : (
-                    /* 빈 코트 기본 */
-                    <div className="flex flex-1 flex-col items-center justify-center gap-3 py-6 text-center">
-                      <p className="text-sm text-muted-foreground">배정 대기 중</p>
-                      <Button
-                        className="w-full"
-                        onClick={() => openAssign(court.id)}
-                      >
-                        <Play className="size-4" />게임 배정
-                      </Button>
+                    /* 빈 코트 기본: 직접 배정 | 자동 배정 */
+                    <div className="flex flex-1 flex-col justify-center gap-3 py-6">
+                      <p className="text-center text-sm text-muted-foreground">
+                        배정 대기 중
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button onClick={() => openAssign(court.id, "manual")}>
+                          <Play className="size-4" />직접 배정
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => openAssign(court.id, "auto")}
+                        >
+                          <Sparkles className="size-4" />자동 배정
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -667,10 +766,12 @@ export function CourtBoard({
 
 /**
  * 배정/수정 패널.
- * 레이아웃: 위 = 선택된 멤버 + 안내, 아래 = 컨트롤(자동배정 + 단복식/혼복 셀렉트) + 액션.
+ * - 직접 배정(manual): 단복식 선택 + 수동 탭 선택만 (자동추천/성별구성 없음)
+ * - 자동 배정(auto)/수정(edit): 단복식 + 성별구성 셀렉트 + 자동 배정 추천 버튼
  */
 function AssignPanel({
-  mode,
+  isEdit,
+  showAuto,
   size,
   comp,
   selectedIds,
@@ -683,7 +784,8 @@ function AssignPanel({
   onCancel,
   onSubmit,
 }: {
-  mode: "assign" | "edit";
+  isEdit: boolean;
+  showAuto: boolean;
   size: GameSize;
   comp: Composition;
   selectedIds: string[];
@@ -746,31 +848,35 @@ function AssignPanel({
               <SelectItem value="2">단식 2명</SelectItem>
             </SelectContent>
           </Select>
-          <Select
-            value={comp}
-            onValueChange={(v) => onCompChange((v ?? "free") as Composition)}
-          >
-            <SelectTrigger className="h-9 flex-1">
-              <SelectValue>{COMPOSITION_LABEL[comp]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {COMPOSITIONS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {COMPOSITION_LABEL[c]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {showAuto && (
+            <Select
+              value={comp}
+              onValueChange={(v) => onCompChange((v ?? "free") as Composition)}
+            >
+              <SelectTrigger className="h-9 flex-1">
+                <SelectValue>{COMPOSITION_LABEL[comp]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {COMPOSITIONS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {COMPOSITION_LABEL[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-full"
-          onClick={onAuto}
-        >
-          <Sparkles className="size-4" />자동 배정 추천
-        </Button>
+        {showAuto && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={onAuto}
+          >
+            <Sparkles className="size-4" />자동 배정 추천
+          </Button>
+        )}
 
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -782,7 +888,7 @@ function AssignPanel({
             disabled={pending || selectedIds.length !== size}
             onClick={onSubmit}
           >
-            {mode === "edit" ? (
+            {isEdit ? (
               <>
                 <Check className="size-4" />수정 완료
               </>

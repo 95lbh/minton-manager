@@ -86,8 +86,8 @@ export const GRADE_BY_VALUE: Record<number, SkillGrade> = {
 /** 실력 미상(게스트 등) 기본값 = C (중간) */
 export const DEFAULT_SKILL_VALUE = 4;
 
-/** 자동 배정 팀 구성 모드. */
-export const COMPOSITIONS = ["free", "mens", "womens", "mixed"] as const;
+/** 자동 배정 팀 구성 모드. (셀렉트 표시 순서: 남복·여복·혼복·자유) */
+export const COMPOSITIONS = ["mens", "womens", "mixed", "free"] as const;
 export type Composition = (typeof COMPOSITIONS)[number];
 export const COMPOSITION_LABEL: Record<Composition, string> = {
   free: "자유(성별 무관)",
