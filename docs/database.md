@@ -227,6 +227,7 @@ RLS는 운영 데이터와 동일 패턴(`is_club_member`).
 ## 8b. 적용된 추가 마이그레이션
 - `0002_create_club_rpc.sql` — 클럽 생성 트랜잭션 RPC.
 - `0003_attendance_guest_and_grade.sql` — `attendance_records`에 `guest_gender`, `guest_level` 추가. 실력 등급은 1~7(S~F)로 사용(컬럼은 smallint 그대로).
+- `0015_club_logo.sql` — `clubs.logo_url` + Storage 공개 버킷 `club-logos` + Storage RLS. 객체 경로 `"<club_id>/logo.webp"`의 첫 폴더(club_id)로 멤버 검증(`is_club_member`). 읽기는 공개, 쓰기/삭제는 멤버만. 업로드는 클라이언트에서 256px webp로 리사이즈.
 
 ## 9. 마이그레이션 순서
 1. enum + `set_updated_at`

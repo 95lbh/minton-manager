@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveClub, listClubAdmins } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import { ClubSettings } from "@/features/clubs/club-settings";
+import { ClubLogoSettings } from "@/features/clubs/club-logo-settings";
 import { DataResetSettings } from "@/features/settings/data-reset";
 import { DataTransferSettings } from "@/features/settings/data-transfer";
 import { DevTools } from "@/features/settings/dev-tools";
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-bold">설정</h1>
       <p className="mt-1 text-sm text-muted-foreground">클럽 공유 및 관리</p>
       <div className="mt-6 max-w-2xl space-y-6">
+        <ClubLogoSettings clubId={club.id} logoUrl={club.logo_url} />
         <ClubSettings
           clubId={club.id}
           clubName={club.name}

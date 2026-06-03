@@ -81,6 +81,14 @@ export function ClubSwitcher({
           disabled={pending}
           className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-lg font-bold hover:bg-muted"
         >
+          {activeClub.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={activeClub.logo_url}
+              alt=""
+              className="size-7 shrink-0 rounded-md object-cover"
+            />
+          )}
           <span className="truncate">{activeClub.name}</span>
           <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
         </DropdownMenuTrigger>
@@ -89,12 +97,24 @@ export function ClubSwitcher({
             <DropdownMenuItem
               key={club.id}
               onClick={() => handleSelect(club.id)}
-              className="flex items-center justify-between"
+              className="flex items-center justify-between gap-2"
             >
-              <span>{club.name}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                {club.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={club.logo_url}
+                    alt=""
+                    className="size-5 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <span className="size-5 shrink-0 rounded bg-muted" />
+                )}
+                <span className="truncate">{club.name}</span>
+              </span>
               <Check
                 className={cn(
-                  "size-4",
+                  "size-4 shrink-0",
                   club.id === activeClub.id ? "opacity-100" : "opacity-0",
                 )}
               />

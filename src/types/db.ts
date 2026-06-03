@@ -19,6 +19,7 @@ export interface Club {
   owner_id: string;
   is_temporary: boolean;
   join_code: string;
+  logo_url: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

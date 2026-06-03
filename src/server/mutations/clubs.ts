@@ -77,6 +77,27 @@ export async function renameClub(
   return { ok: true };
 }
 
+/**
+ * 클럽 로고 URL 저장/제거. 클럽 멤버(관리자)면 가능(clubs update RLS).
+ * 실제 이미지 업로드/삭제는 클라이언트에서 Storage(club-logos)로 처리하고,
+ * 여기서는 공개 URL(또는 제거 시 null)만 DB에 반영한다.
+ */
+export async function updateClubLogo(
+  clubId: string,
+  logoUrl: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clubs")
+    .update({ logo_url: logoUrl })
+    .eq("id", clubId);
+  if (error) {
+    return { ok: false, error: { message: "로고 저장에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 /** 참여 코드 재생성(이전 코드 무효화). 클럽 admin만(RPC에서 검증). */
 export async function regenerateJoinCode(
   clubId: string,
