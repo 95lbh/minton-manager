@@ -57,14 +57,17 @@ export function FullscreenToggle() {
       variant="outline"
       size="sm"
       onClick={toggle}
-      aria-label={isFs ? "전체화면 끄기" : "전체화면"}
-      title={isFs ? "전체화면 끄기 (Esc)" : "전체화면"}
+      aria-label={isFs ? "전체화면 끄기" : "전체 화면"}
+      title={isFs ? "전체화면 끄기 (Esc)" : "전체 화면"}
     >
       {isFs ? (
         <Minimize className="size-4" />
       ) : (
         <Maximize className="size-4" />
       )}
+      <span className="hidden sm:inline">
+        {isFs ? "전체화면 끄기" : "전체 화면"}
+      </span>
     </Button>
   );
 }
