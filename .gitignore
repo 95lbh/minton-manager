@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Claude Code 로컬 개인 설정 (공유 설정은 .claude/settings.json)
 .claude/settings.local.json
+
+# 디자인 참고용 (로컬 전용, git 미관리)
+/reference
