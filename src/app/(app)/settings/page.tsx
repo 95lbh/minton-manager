@@ -4,6 +4,7 @@ import { getActiveClub, listClubAdmins } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import { ClubSettings } from "@/features/clubs/club-settings";
 import { DataResetSettings } from "@/features/settings/data-reset";
+import { DataTransferSettings } from "@/features/settings/data-transfer";
 import { DevTools } from "@/features/settings/dev-tools";
 
 export default async function SettingsPage() {
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
           currentUserId={user?.id ?? ""}
           admins={admins}
         />
+        <DataTransferSettings />
         <DataResetSettings />
         <DevTools />
       </div>
