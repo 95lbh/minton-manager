@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,6 @@ interface FormState {
 const EMPTY: FormState = { name: "", gender: "none", level: "none" };
 
 export function MembersManager({ members }: { members: ClubMember[] }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [deleting, setDeleting] = useState<ClubMember | null>(null);
@@ -84,7 +82,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       if (res.ok) {
         toast.success(form.id ? "수정되었습니다." : "회원이 추가되었습니다.");
         setOpen(false);
-        router.refresh();
+        // revalidatePath로 목록 자동 갱신 → router.refresh() 불필요.
       } else {
         toast.error(res.error.message);
       }
@@ -98,7 +96,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       if (res.ok) {
         toast.success("삭제되었습니다.");
         setDeleting(null);
-        router.refresh();
+        // revalidatePath로 목록 자동 갱신 → router.refresh() 불필요.
       } else {
         toast.error(res.error.message);
       }

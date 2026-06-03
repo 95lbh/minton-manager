@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FlaskConical, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +37,6 @@ const devStore = {
  * 활성 상태는 localStorage 에 저장된다(기기별). 현재 기능: 무작위 회원 N명 생성.
  */
 export function DevTools() {
-  const router = useRouter();
   const enabled = useSyncExternalStore(
     devStore.subscribe,
     devStore.get,
@@ -75,7 +73,6 @@ export function DevTools() {
       const res = await seedRandomMembers(n);
       if (res.ok) {
         toast.success(`무작위 회원 ${res.data?.created ?? n}명을 생성했습니다.`);
-        router.refresh();
       } else {
         toast.error(res.error.message);
       }

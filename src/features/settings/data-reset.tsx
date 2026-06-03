@@ -1,14 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Users, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resetMembers, resetStatsData } from "@/server/mutations/admin";
 
 export function DataResetSettings() {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const doResetMembers = () => {
@@ -22,7 +20,6 @@ export function DataResetSettings() {
       const res = await resetMembers();
       if (res.ok) {
         toast.success(`회원 ${res.data?.count ?? 0}명을 정리했습니다.`);
-        router.refresh();
       } else {
         toast.error(res.error.message);
       }
@@ -40,7 +37,6 @@ export function DataResetSettings() {
       const res = await resetStatsData();
       if (res.ok) {
         toast.success("출석·게임 데이터를 초기화했습니다.");
-        router.refresh();
       } else {
         toast.error(res.error.message);
       }
