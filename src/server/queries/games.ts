@@ -87,16 +87,18 @@ export async function getCourtViewData(
       .select("*")
       .eq("session_id", sessionId)
       .order("started_at", { ascending: true }),
+    // 오늘 세션의 게임에 속한 참가자만 조회(전체 클럽 이력 과다 조회 방지).
+    // games!inner + games.session_id 필터로 세션 범위로 제한 → 게임이 쌓여도 비용 일정.
     supabase
       .from("game_players")
-      .select("game_id, attendance_record_id, team, is_active")
-      .eq("club_id", clubId),
+      .select("game_id, attendance_record_id, team, is_active, games!inner(session_id)")
+      .eq("games.session_id", sessionId),
   ]);
 
   const courts = (courtsRes.data ?? []) as Court[];
   const attRows = (attRes.data ?? []) as unknown as AttRow[];
   const games = (gamesRes.data ?? []) as Game[];
-  const players = (playersRes.data ?? []) as {
+  const players = (playersRes.data ?? []) as unknown as {
     game_id: string;
     attendance_record_id: string;
     team: number;
