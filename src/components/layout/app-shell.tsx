@@ -1,6 +1,7 @@
 import { AppNav } from "@/components/layout/app-nav";
 import { ClubSwitcher } from "@/components/layout/club-switcher";
 import { GuestBanner } from "@/components/layout/guest-banner";
+import { GuestNudge } from "@/components/layout/guest-nudge";
 import { FullscreenToggle } from "@/components/layout/fullscreen-toggle";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/server/mutations/auth";
@@ -42,7 +43,10 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        {isGuest && <GuestNudge />}
+        {children}
+      </main>
     </div>
   );
 }
