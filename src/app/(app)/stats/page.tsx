@@ -139,7 +139,7 @@ export default async function StatsPage() {
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold tracking-tight">급수 분포</h2>
-              <span className="text-xs text-muted-foreground">S → F</span>
+              {/* <span className="text-xs text-muted-foreground">S → F</span> */}
             </div>
             <ul className="mt-3 space-y-1.5">
               {levelRows.map((l) => (
@@ -222,7 +222,7 @@ export default async function StatsPage() {
       </div>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        ※ 일반 운영 모드는 승패/점수를 기록하지 않으므로 참여 횟수 중심입니다.
+        {/* ※ 일반 운영 모드는 승패/점수를 기록하지 않으므로 참여 횟수 중심입니다. */}
       </p>
     </div>
   );
