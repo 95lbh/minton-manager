@@ -96,7 +96,7 @@ docs/          # prd, architecture, database, design-system, agent-harness, qa-c
 
 Supabase 환경변수(`.env.local`)가 없으면 dev 서버는 뜨되 인증은 비활성화되고 보호 페이지는 "Supabase 설정 필요" 안내를 보여준다([src/lib/env.ts](src/lib/env.ts)의 `hasSupabaseEnv`). `.env.example`를 복사해 채운다.
 
-- 연동 점검: `node --env-file=.env.local scripts/check-supabase.mjs` — 환경변수/Auth/Google provider/테이블 접근을 한 번에 확인(비밀값 미출력).
+- 연동 점검: `npm run check:db` (= `node --env-file=.env.local scripts/check-supabase.mjs`) — 환경변수/Auth/provider + **모든 마이그레이션(0001~0016) 핵심 객체(테이블·컬럼·RPC·스토리지) 적용 여부**를 한 번에 확인(비밀값 미출력). 누락 시 종료코드 1 → CI/배포 게이트로 사용 가능. **새 마이그레이션 추가 시 이 스크립트에 검사도 함께 추가**한다.
 - ⚠️ `NEXT_PUBLIC_SUPABASE_URL`은 **프로젝트 기본 URL**(`https://xxx.supabase.co`)이어야 한다. Data API 엔드포인트(`.../rest/v1/`)를 넣으면 안 됨.
 - `.env.local` 변경 후에는 dev 서버를 **재시작**해야 반영된다.
 - ⚠️ **dev 서버가 떠 있는 동안 `npm run build`나 `npm install`을 돌리지 말 것.** dev(`next dev`)와 production build가 같은 `.next`를 두고 충돌해 캐시가 꼬이면 기본 템플릿/빈 페이지가 서빙된다. 증상이 보이면: dev 서버 종료 → `rm -rf .next` → `npm run dev` 재시작 → 브라우저 강력 새로고침(Ctrl+Shift+R).
