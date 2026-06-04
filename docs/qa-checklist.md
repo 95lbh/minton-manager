@@ -65,8 +65,9 @@
 - [ ] manifest(`/manifest.webmanifest`) 로드, 아이콘 192/512 표시
 - [ ] Chrome 설치 프롬프트(HTTPS), 독립 창 실행
 - [ ] iOS "홈 화면에 추가" 아이콘 적용
-- [ ] Service Worker 등록(prod) + offline 폴백
+- [ ] Service Worker **비활성**(kill switch): 낡은 SW 자가 제거 + 재등록 안 함 (무한 로딩 재발 방지). 오프라인 폴백 필요 시 견고한 SW로 재도입
 - [ ] Vercel 환경변수(URL/anon) · OAuth 리디렉트 URL(prod 도메인) 등록
+- [ ] Vercel 함수 리전 = Seoul(icn1), Supabase 서울과 동일
 - [ ] 구 프로젝트(리전 이전 전) 정리
 
 ---

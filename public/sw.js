@@ -1,59 +1,34 @@
-// honey_minton 서비스워커 — 보수적 캐싱
-// 운영 도구라 '실시간 데이터'가 중요 → RSC/API는 캐시하지 않는다.
-//  - 페이지 내비게이션: 네트워크 우선, 오프라인이면 offline.html 폴백
-//  - 정적 자산(_next/static, 아이콘, 폰트): 캐시 우선(불변 해시 자산)
-//  - 그 외: 그냥 네트워크 (stale 방지)
-const CACHE = "hm-cache-v1";
-const OFFLINE_URL = "/offline.html";
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((c) => c.add(OFFLINE_URL))
-      .then(() => self.skipWaiting()),
-  );
-});
+// 서비스워커 kill switch.
+// 과거 배포에서 등록된 SW가 내비게이션을 가로채 무한 로딩을 유발해, SW를 폐기한다.
+// 이 파일을 받은 브라우저는 캐시를 비우고 자기 자신을 등록 해제한 뒤 페이지를 새로고침한다.
+// (실시간 운영 데이터가 중요한 앱이라 오프라인 캐시의 이득보다 위험이 커서 SW를 쓰지 않음)
+self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-      )
-      .then(() => self.clients.claim()),
+    (async () => {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      } catch {
+        // 무시
+      }
+      try {
+        await self.registration.unregister();
+      } catch {
+        // 무시
+      }
+      // 제어 중이던 탭들을 새로고침해 SW 없는 상태로 즉시 복구.
+      try {
+        const clients = await self.clients.matchAll({ type: "window" });
+        for (const client of clients) {
+          if ("navigate" in client) client.navigate(client.url);
+        }
+      } catch {
+        // 무시
+      }
+    })(),
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET") return;
-
-  // 페이지 이동: 네트워크 우선 → 실패 시 오프라인 폴백
-  if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match(OFFLINE_URL)));
-    return;
-  }
-
-  const url = new URL(req.url);
-  const isStatic =
-    url.pathname.startsWith("/_next/static") ||
-    /\.(?:png|svg|ico|webp|woff2?)$/.test(url.pathname);
-
-  // 정적 자산: 캐시 우선 + 백그라운드 채우기
-  if (isStatic) {
-    event.respondWith(
-      caches.match(req).then(
-        (cached) =>
-          cached ||
-          fetch(req).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-            return res;
-          }),
-      ),
-    );
-  }
-  // 그 외(RSC/데이터): 기본 네트워크 (캐시 안 함)
-});
+// fetch 핸들러를 두지 않아 모든 요청은 네트워크로 그대로 통과한다(가로채지 않음).
