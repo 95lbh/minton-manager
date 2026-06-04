@@ -5,7 +5,7 @@ import type { Provider } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ROUTES } from "@/lib/constants";
+import { ROUTES, PENDING_LINK_PROVIDER_KEY } from "@/lib/constants";
 
 /**
  * 비회원(익명) → 정식 계정 전환 버튼(Google/Kakao).
@@ -18,6 +18,9 @@ export function UpgradeButtons() {
   const upgrade = async (provider: Provider) => {
     setLoading(provider);
     try {
+      // 전환이 'identity_already_exists'로 실패하면, 돌아온 페이지(AuthErrorHandler)에서
+      // 이 값을 읽어 기존 계정 로그인(signInWithOAuth)으로 자동 전환한다.
+      sessionStorage.setItem(PENDING_LINK_PROVIDER_KEY, provider);
       const supabase = createClient();
       const { error } = await supabase.auth.linkIdentity({
         provider,
@@ -27,6 +30,7 @@ export function UpgradeButtons() {
       });
       if (error) throw error;
     } catch (e) {
+      sessionStorage.removeItem(PENDING_LINK_PROVIDER_KEY);
       toast.error(e instanceof Error ? e.message : "정식 전환에 실패했습니다.");
       setLoading(null);
     }

@@ -97,3 +97,10 @@ export const COMPOSITION_LABEL: Record<Composition, string> = {
 };
 
 export const APP_NAME = "마이민턴";
+
+/**
+ * 익명 계정 정식 전환(linkIdentity) 직전에 시도한 provider 를 저장하는 키.
+ * linkIdentity 가 identity_already_exists 로 실패하면(이미 가입된 소셜 계정),
+ * 돌아온 페이지에서 이 값을 읽어 signInWithOAuth 로 기존 계정 로그인으로 자동 전환한다.
+ */
+export const PENDING_LINK_PROVIDER_KEY = "mm_pending_link_provider";

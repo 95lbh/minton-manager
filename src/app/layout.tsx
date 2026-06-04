@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { PwaRegister } from "@/components/pwa-register";
+import { AuthErrorHandler } from "@/features/auth/auth-error-handler";
 
 export const metadata: Metadata = {
   title: "마이민턴 (myminton)",
@@ -33,6 +34,7 @@ export default function RootLayout({
         {children}
         <Toaster position="top-center" richColors />
         <PwaRegister />
+        <AuthErrorHandler />
       </body>
     </html>
   );
