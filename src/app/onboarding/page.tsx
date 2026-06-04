@@ -1,17 +1,15 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
 import { APP_NAME, ROUTES } from "@/lib/constants";
+import { getCurrentUser } from "@/server/queries/auth";
 import { getActiveClub } from "@/server/queries/clubs";
+import { signOut } from "@/server/mutations/auth";
 import { CreateClubForm } from "@/features/clubs/create-club-form";
 
 export default async function OnboardingPage() {
   if (!hasSupabaseEnv) redirect(ROUTES.home);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect(ROUTES.home);
 
   // 이미 클럽이 있으면 대시보드로
@@ -38,6 +36,16 @@ export default async function OnboardingPage() {
         <div className="mt-6">
           <CreateClubForm />
         </div>
+
+        {/* 클럽을 만들지 않고 빠져나가는 경로 */}
+        <form action={signOut} className="mt-5 text-center">
+          <button
+            type="submit"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            {isGuest ? "그만두고 나가기" : "로그아웃"}
+          </button>
+        </form>
       </div>
     </main>
   );
