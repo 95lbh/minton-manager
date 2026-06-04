@@ -160,6 +160,26 @@ export async function removeClubAdmin(
   return { ok: true };
 }
 
+/**
+ * 클럽 소유권 이임. 현재 소유자만, 대상은 기존 공동 관리자(RPC에서 검증).
+ * 이임 후 호출자는 일반 운영자(공동 관리자)가 된다.
+ */
+export async function transferClubOwnership(
+  clubId: string,
+  userId: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("transfer_club_ownership", {
+    _club_id: clubId,
+    _user_id: userId,
+  });
+  if (error) {
+    return { ok: false, error: { message: "소유권 이임에 실패했습니다.", detail: error.message } };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 /** 클럽 삭제(soft delete). owner(super admin)만(RPC에서 검증). */
 export async function deleteClub(clubId: string): Promise<ActionResult> {
   const supabase = await createClient();

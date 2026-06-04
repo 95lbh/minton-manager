@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy, RefreshCw, LogIn, Trash2, UserMinus } from "lucide-react";
+import { Copy, RefreshCw, LogIn, Trash2, UserMinus, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import {
   joinClubByCode,
   deleteClub,
   removeClubAdmin,
+  transferClubOwnership,
 } from "@/server/mutations/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ClubAdminView } from "@/server/queries/clubs";
@@ -112,6 +113,26 @@ export function ClubSettings({
     });
   };
 
+  const transfer = (userId: string, label: string) => {
+    if (
+      !confirm(
+        `'${label}' 님에게 이 클럽의 소유권을 넘깁니다.\n\n` +
+          `이임 후 당신은 일반 운영자가 되어 클럽 삭제 등 소유자 전용 권한을 잃습니다.\n` +
+          `정말 계속할까요?`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      const res = await transferClubOwnership(clubId, userId);
+      if (res.ok) {
+        toast.success(`'${label}' 님에게 소유권을 넘겼습니다.`);
+        router.refresh();
+      } else {
+        toast.error(res.error.message);
+      }
+    });
+  };
+
   const removeClub = () => {
     if (!confirm(`'${clubName}' 클럽을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
     startTransition(async () => {
@@ -170,6 +191,12 @@ export function ClubSettings({
           {/* 공동 관리자 목록 */}
           <section className="rounded-lg border bg-card p-5">
             <h2 className="text-sm font-semibold">관리자</h2>
+            {isOwner && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                공동 관리자에게 소유권을 넘길 수 있어요. 이임하면 당신은 일반
+                운영자가 됩니다.
+              </p>
+            )}
             <ul className="mt-3 divide-y">
               {admins.map((a) => {
                 const label = a.display_name || a.email || "관리자";
@@ -189,16 +216,27 @@ export function ClubSettings({
                       </p>
                     </div>
                     {isOwner && !a.is_owner && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => removeAdmin(a.user_id, label)}
-                        disabled={pending}
-                      >
-                        <UserMinus className="mr-1 h-4 w-4" /> 내보내기
-                      </Button>
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => transfer(a.user_id, label)}
+                          disabled={pending}
+                        >
+                          <Crown className="mr-1 h-4 w-4" /> 소유권 이임
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => removeAdmin(a.user_id, label)}
+                          disabled={pending}
+                        >
+                          <UserMinus className="mr-1 h-4 w-4" /> 내보내기
+                        </Button>
+                      </div>
                     )}
                   </li>
                 );
