@@ -149,6 +149,13 @@ console.log("\n[마이그레이션 적용 여부]");
   ? pass("0016 transfer_club_ownership RPC")
   : fail("0016 transfer_club_ownership RPC 없음 — 0016_transfer_ownership.sql");
 
+// 0017: 실시간 퍼블리케이션 — anon 으로 pg_publication_tables 조회 불가 → 수동 안내
+warn(
+  "0017 Realtime 퍼블리케이션은 자동 확인 불가 — SQL Editor에서 확인:\n" +
+    "      select tablename from pg_publication_tables where pubname='supabase_realtime'\n" +
+    "        and tablename in ('games','game_players','attendance_records');",
+);
+
 // ── 결과 ────────────────────────────────────────────────────────
 if (failed === 0) {
   console.log("\n✅ 모든 마이그레이션 적용 확인됨");

@@ -42,6 +42,7 @@ import {
 import { ElapsedTime } from "@/features/games/elapsed-time";
 import { WaitTime } from "@/features/games/wait-time";
 import { genderAvatarClass } from "@/components/person-avatar";
+import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
 import { recommendGame, type GameSize } from "@/server/services/assignment";
 import {
   startGame,
@@ -56,6 +57,9 @@ import type {
   OngoingGameView,
 } from "@/server/queries/games";
 import type { Game } from "@/types/db";
+
+// 코트 화면에 영향을 주는 테이블(실시간 구독 대상).
+const REALTIME_TABLES = ["games", "game_players", "attendance_records"] as const;
 
 const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
 
@@ -130,15 +134,20 @@ function optimisticReducer(
 }
 
 export function CourtBoard({
+  clubId,
   sessionId,
   data,
 }: {
+  clubId: string;
   sessionId: string;
   data: CourtViewData;
 }) {
   const [optData, applyOptimistic] = useOptimistic(data, optimisticReducer);
   const { courts, ongoing, pool, currentSeq, history } = optData;
   const [pending, startTransition] = useTransition();
+
+  // 다른 스태프의 코트 배정·게임·출석 변경을 실시간 반영.
+  useRealtimeRefresh(clubId, REALTIME_TABLES);
 
   const [gameSize, setGameSize] = useState<Record<string, GameSize>>({});
   const [composition, setComposition] = useState<Record<string, Composition>>({});

@@ -1031,3 +1031,33 @@ $$;
 
 grant execute on function public.transfer_club_ownership(uuid, uuid) to authenticated;
 
+
+-- =============================================================
+-- 0017: 실시간 동기화 (Supabase Realtime)
+-- -------------------------------------------------------------
+-- games/game_players/attendance_records 를 supabase_realtime 퍼블리케이션에 추가.
+-- postgres_changes 구독은 테이블 RLS(is_club_member) 적용 → 테넌트 격리 유지.
+-- REPLICA IDENTITY FULL: club_id=eq 필터가 UPDATE/DELETE 에서도 동작.
+-- =============================================================
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['games', 'game_players', 'attendance_records']
+  loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end$$;
+
+alter table public.games replica identity full;
+alter table public.game_players replica identity full;
+alter table public.attendance_records replica identity full;
+

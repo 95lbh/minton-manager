@@ -51,7 +51,7 @@ export default async function GamesPage() {
         </div>
       </div>
       <div className="mt-6">
-        <CourtBoard sessionId={session.id} data={data} />
+        <CourtBoard clubId={club.id} sessionId={session.id} data={data} />
       </div>
     </div>
   );

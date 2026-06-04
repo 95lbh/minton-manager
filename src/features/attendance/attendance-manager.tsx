@@ -15,8 +15,11 @@ import {
 } from "@/server/mutations/attendance";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_VALUE } from "@/lib/constants";
 import { PersonAvatar } from "@/components/person-avatar";
+import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
+
+const ATTENDANCE_REALTIME_TABLES = ["attendance_records"] as const;
 
 // 낙관적 출석 갱신: 서버 응답 전 목록을 즉시 반영(이후 revalidate로 동기화).
 type RecAction =
@@ -52,6 +55,9 @@ export function AttendanceManager({
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const [pending, startTransition] = useTransition();
   const [optRecords, applyOptimistic] = useOptimistic(records, recordsReducer);
+
+  // 다른 스태프의 출석 체크인/취소를 실시간 반영.
+  useRealtimeRefresh(session.club_id, ATTENDANCE_REALTIME_TABLES);
 
   // 이미 출석한 회원 id 집합
   const attendedMemberIds = useMemo(
