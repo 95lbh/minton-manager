@@ -430,6 +430,7 @@ export function CourtBoard({
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={pending}
+            aria-label={`${p.name} 상태 변경`}
             className={`${baseCls} disabled:opacity-50`}
           >
             {content}
@@ -539,6 +540,16 @@ export function CourtBoard({
 
       {/* === 우측: 코트 그리드 === */}
       <div className="order-1 lg:order-2 lg:col-span-8">
+        {courts.length === 0 && (
+          <div className="mb-4 rounded-xl border border-dashed bg-muted/30 p-6 text-center">
+            <p className="text-sm font-medium">아직 코트가 없어요</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              아래{" "}
+              <span className="font-semibold text-foreground">＋ 코트 추가</span>
+              로 첫 코트를 만들면 배정을 시작할 수 있어요.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {courts.map((court) => {
             const game = ongoingByCourt.get(court.id);
@@ -854,6 +865,7 @@ function AssignPanel({
                 <button
                   type="button"
                   onClick={() => onRemove(id)}
+                  aria-label={`${p.name} 선택 해제`}
                   className="rounded-full p-0.5 hover:bg-muted"
                 >
                   <X className="size-3" />

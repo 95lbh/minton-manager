@@ -90,7 +90,7 @@
 9. **반응형** — stats 표 가로 스크롤 래퍼, league/team-games MatchRow 줄바꿈 정렬, 브래킷/내비 스크롤 힌트, court-board 대기열 모바일 max-height.
 
 ### 낮음
-- 코트 0개일 때 안내 부재(첫 진입 가이드)
+- ~~코트 0개일 때 안내 부재(첫 진입 가이드)~~ ✅ 코트 빈 상태 가이드 추가
 - `confirm()` vs 다이얼로그 일관성, 점수 onBlur 저장 피드백
 - setSeedOrder 비트랜잭션, 콜백 승격 실패 무시, 동일 게스트 중복 추가, 이중 클릭, clipboard 비보안 환경 fallback
 
