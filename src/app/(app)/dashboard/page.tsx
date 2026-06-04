@@ -36,6 +36,8 @@ export default function DashboardPage() {
           <Link
             key={card.href}
             href={card.href}
+            // 같은 목적지를 상단 네비가 이미 프리페치하므로 카드 프리페치는 중복 → 끔.
+            prefetch={false}
             className="group flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.03]"
           >
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
