@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
 import { APP_NAME, ROUTES } from "@/lib/constants";
 import { AppShell } from "@/components/layout/app-shell";
+import { getCurrentUser } from "@/server/queries/auth";
 import { getMyClubs, getActiveClub } from "@/server/queries/clubs";
 
 export default async function AppLayout({
@@ -45,10 +45,7 @@ export default async function AppLayout({
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect(ROUTES.home);

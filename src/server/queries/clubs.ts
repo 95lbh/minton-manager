@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/server/queries/auth";
 import type { Club, ClubAdmin } from "@/types/db";
 
 export const ACTIVE_CLUB_COOKIE = "active_club_id";
@@ -33,11 +34,10 @@ export async function listClubAdmins(clubId: string): Promise<ClubAdminView[]> {
  * (레이아웃 + 페이지 + getActiveClub 내부 호출 중복 제거).
  */
 export const getMyClubs = cache(async function getMyClubs(): Promise<MyClub[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
+
+  const supabase = await createClient();
 
   // ⚠️ club_admins SELECT RLS는 "내가 속한 클럽의 다른 관리자 행"도 보여주므로,
   //    본인 멤버십 행으로 명시 필터하지 않으면 관리자 2명+ 클럽이 중복 노출된다.

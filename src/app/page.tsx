@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
 import { ROUTES } from "@/lib/constants";
+import { getCurrentUser } from "@/server/queries/auth";
 import { GuestStart } from "@/features/auth/guest-start";
 
 /**
@@ -10,10 +10,7 @@ import { GuestStart } from "@/features/auth/guest-start";
  */
 export default async function Home() {
   if (hasSupabaseEnv) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getCurrentUser();
     if (user) redirect(ROUTES.dashboard);
   }
   return <GuestStart />;
