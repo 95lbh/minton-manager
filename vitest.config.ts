@@ -9,5 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // 단위 테스트만 — e2e/*.spec.ts(Playwright)는 vitest가 잡지 않도록 한다.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
