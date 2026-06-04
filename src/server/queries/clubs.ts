@@ -34,20 +34,30 @@ export async function listClubAdmins(clubId: string): Promise<ClubAdminView[]> {
  */
 export const getMyClubs = cache(async function getMyClubs(): Promise<MyClub[]> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // ⚠️ club_admins SELECT RLS는 "내가 속한 클럽의 다른 관리자 행"도 보여주므로,
+  //    본인 멤버십 행으로 명시 필터하지 않으면 관리자 2명+ 클럽이 중복 노출된다.
   const { data, error } = await supabase
     .from("club_admins")
     .select("role, clubs!inner(*)")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
   if (error || !data) return [];
 
-  return data
-    .map((row) => {
-      const club = row.clubs as unknown as Club;
-      if (!club || club.deleted_at) return null;
-      return { ...club, role: row.role } as MyClub;
-    })
-    .filter((c): c is MyClub => c !== null);
+  const seen = new Set<string>();
+  const clubs: MyClub[] = [];
+  for (const row of data) {
+    const club = row.clubs as unknown as Club;
+    if (!club || club.deleted_at || seen.has(club.id)) continue;
+    seen.add(club.id);
+    clubs.push({ ...club, role: row.role } as MyClub);
+  }
+  return clubs;
 });
 
 /**
