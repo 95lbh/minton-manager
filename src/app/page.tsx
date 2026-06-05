@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import {
   ClipboardCheck,
   LayoutGrid,
@@ -128,6 +129,27 @@ export default async function Home() {
           </div>
         </div>
 
+        {/* 제품 미리보기 (코트 현황 히어로 샷) */}
+        <div className="mt-12 overflow-hidden rounded-2xl border bg-card shadow-lg sm:mt-16">
+          <div className="flex items-center gap-1.5 border-b bg-muted/40 px-4 py-2.5">
+            <span className="size-2.5 rounded-full bg-red-400/70" />
+            <span className="size-2.5 rounded-full bg-amber-400/70" />
+            <span className="size-2.5 rounded-full bg-green-400/70" />
+            <span className="ml-2 text-xs text-muted-foreground">
+              코트 현황 — 진행 게임과 대기열을 한눈에
+            </span>
+          </div>
+          <Image
+            src="/screenshots/court2.png"
+            alt="마이민턴 코트 현황 화면 — 코트별 진행 게임과 대기자 자동 배정"
+            width={1600}
+            height={900}
+            priority
+            sizes="(max-width: 1024px) 100vw, 960px"
+            className="h-auto w-full"
+          />
+        </div>
+
         {/* 기능 소개 */}
         <section className="mt-16 sm:mt-24">
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
@@ -149,6 +171,45 @@ export default async function Home() {
                 <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* 화면 미리보기: 출석 / 통계 */}
+        <section className="mt-16 sm:mt-24">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            출석부터 통계까지, 화면으로 보기
+          </h2>
+          <div className="mt-6 grid gap-6 lg:grid-cols-2">
+            <figure>
+              <div className="overflow-hidden rounded-xl border shadow-sm">
+                <Image
+                  src="/screenshots/attendance.png"
+                  alt="마이민턴 출석 관리 화면 — 회원·게스트 출석 체크"
+                  width={1600}
+                  height={900}
+                  sizes="(max-width: 1024px) 100vw, 480px"
+                  className="h-auto w-full"
+                />
+              </div>
+              <figcaption className="mt-2 text-sm text-muted-foreground">
+                출석 관리 — 회원·게스트 체크인을 한 번에
+              </figcaption>
+            </figure>
+            <figure>
+              <div className="overflow-hidden rounded-xl border shadow-sm">
+                <Image
+                  src="/screenshots/stats.png"
+                  alt="마이민턴 통계 화면 — 회원별 참여와 성별·급수 분포"
+                  width={1600}
+                  height={900}
+                  sizes="(max-width: 1024px) 100vw, 480px"
+                  className="h-auto w-full"
+                />
+              </div>
+              <figcaption className="mt-2 text-sm text-muted-foreground">
+                통계 — 참여 현황과 성별·급수 분포를 자동 집계
+              </figcaption>
+            </figure>
           </div>
         </section>
 
