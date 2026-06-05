@@ -30,6 +30,14 @@ export function StructureSelector({
 
   const choose = (value: TournamentStructure) => {
     if (value === structure) return;
+    // 이미 형식이 정해져 있으면 변경 시 기존 대진·점수가 삭제됨 → 확인.
+    if (
+      structure &&
+      !confirm(
+        `형식을 '${TOURNAMENT_STRUCTURE_LABEL[value]}'(으)로 변경하면 기존 대진·점수가 모두 삭제됩니다.\n계속할까요?`,
+      )
+    )
+      return;
     startTransition(async () => {
       const res = await setTournamentStructure(tournamentId, value);
       if (res.ok) {
