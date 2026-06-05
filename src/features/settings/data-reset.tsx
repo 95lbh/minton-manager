@@ -54,7 +54,7 @@ export function DataResetSettings() {
           <div className="min-w-0">
             <p className="text-sm font-medium">회원 목록 초기화</p>
             <p className="text-xs text-muted-foreground">
-              모든 회원을 목록에서 제거합니다. 과거 기록은 보존됩니다.
+              모든 회원을 목록에서 제거합니다. 통계 기록은 보존됩니다.
             </p>
           </div>
           <Button

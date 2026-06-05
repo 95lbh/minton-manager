@@ -468,7 +468,7 @@ export function CourtBoard({
     <div className="grid gap-5 lg:grid-cols-12 lg:items-start">
       {/* === 좌측: 대기자 큐 (모바일에선 코트 아래로) === */}
       <aside className="order-2 lg:order-1 lg:col-span-4 lg:sticky lg:top-4">
-        <div className="flex flex-col rounded-xl border bg-card">
+        <div className="flex flex-col rounded-xl border-2 border-primary/25 bg-card">
           <div className="border-b p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold tracking-tight">

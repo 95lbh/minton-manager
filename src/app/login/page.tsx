@@ -13,5 +13,10 @@ export default async function LoginPage() {
     } = await supabase.auth.getUser();
     if (user) redirect(ROUTES.dashboard);
   }
-  return <LandingAuth />;
+  // LandingAuth는 카드만 렌더하므로(랜딩 페이지가 레이아웃 담당), 여기선 중앙 정렬해 감싼다.
+  return (
+    <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-6">
+      <LandingAuth />
+    </main>
+  );
 }
