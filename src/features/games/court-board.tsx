@@ -43,11 +43,7 @@ import { ElapsedTime } from "@/features/games/elapsed-time";
 import { WaitTime } from "@/features/games/wait-time";
 import { genderAvatarClass } from "@/components/person-avatar";
 import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
-import {
-  recommendGame,
-  WEIGHT_PRESETS,
-  type GameSize,
-} from "@/server/services/assignment";
+import { recommendGame, type GameSize } from "@/server/services/assignment";
 import {
   startGame,
   endGame,
@@ -64,19 +60,6 @@ import type { Game } from "@/types/db";
 
 // 코트 화면에 영향을 주는 테이블(실시간 구독 대상).
 const REALTIME_TABLES = ["games", "game_players", "attendance_records"] as const;
-
-// 자동 배정 우선순위(가중치 프리셋). variety=파트너/상대 다양성↑, skill=실력 균형↑.
-const PRIORITY_OPTIONS = [
-  { value: "balanced", label: "균형(기본)" },
-  { value: "variety", label: "다양성 우선" },
-  { value: "skill", label: "실력 균형" },
-] as const;
-type Priority = (typeof PRIORITY_OPTIONS)[number]["value"];
-const PRIORITY_LABEL: Record<Priority, string> = {
-  balanced: "균형(기본)",
-  variety: "다양성 우선",
-  skill: "실력 균형",
-};
 
 const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
 
@@ -169,8 +152,6 @@ export function CourtBoard({
   const [gameSize, setGameSize] = useState<Record<string, GameSize>>({});
   const [composition, setComposition] = useState<Record<string, Composition>>({});
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
-  // 자동 배정 우선순위(보드 공통). router.refresh()로 유지됨.
-  const [priority, setPriority] = useState<Priority>("balanced");
   // 코트별 패널 모드:
   //  'manual'(직접 배정: 수동 선택만) | 'auto'(자동 배정: 성별구성+자동추천) | 'edit'(진행중 게임 수정)
   const [openCourt, setOpenCourt] = useState<string | null>(null);
@@ -251,7 +232,8 @@ export function CourtBoard({
       gameSize: sizeOf(courtId),
       composition: compOf(courtId),
       currentSeq,
-      weights: WEIGHT_PRESETS[priority],
+      // 동률 후보를 섞어 매번 다른 조합 추천(공정성은 유지).
+      randomize: true,
     });
     if (!rec) {
       toast.error(
@@ -684,7 +666,6 @@ export function CourtBoard({
                       showAuto={openMode !== "manual"}
                       size={sizeOf(court.id)}
                       comp={compOf(court.id)}
-                      priority={priority}
                       selectedIds={[...selOf(court.id)]}
                       poolById={poolById}
                       pending={pending}
@@ -694,7 +675,6 @@ export function CourtBoard({
                       onCompChange={(c) =>
                         setComposition((p) => ({ ...p, [court.id]: c }))
                       }
-                      onPriorityChange={setPriority}
                       onAuto={() =>
                         autoFill(
                           court.id,
@@ -816,13 +796,11 @@ function AssignPanel({
   showAuto,
   size,
   comp,
-  priority,
   selectedIds,
   poolById,
   pending,
   onSizeChange,
   onCompChange,
-  onPriorityChange,
   onAuto,
   onRemove,
   onCancel,
@@ -832,13 +810,11 @@ function AssignPanel({
   showAuto: boolean;
   size: GameSize;
   comp: Composition;
-  priority: Priority;
   selectedIds: string[];
   poolById: Map<string, PoolPlayer>;
   pending: boolean;
   onSizeChange: (s: GameSize) => void;
   onCompChange: (c: Composition) => void;
-  onPriorityChange: (p: Priority) => void;
   onAuto: () => void;
   onRemove: (id: string) => void;
   onCancel: () => void;
@@ -913,29 +889,6 @@ function AssignPanel({
             </Select>
           )}
         </div>
-
-        {showAuto && (
-          <div>
-            <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-              자동 배정 우선순위
-            </p>
-            <Select
-              value={priority}
-              onValueChange={(v) => onPriorityChange((v ?? "balanced") as Priority)}
-            >
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue>{PRIORITY_LABEL[priority]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITY_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {showAuto && (
           <Button

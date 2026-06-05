@@ -66,6 +66,11 @@ export interface AssignmentOptions {
   weights?: Weights;
   /** 후보 window 여유 (기본 gameSize) */
   windowSlack?: number;
+  /**
+   * 동률(같은 게임수·마지막 순번) 후보를 무작위로 섞어 매번 다른 조합이 나오게 한다.
+   * 공정성은 유지: 적게 친 사람이 항상 먼저. (테스트는 미사용 → 결정적)
+   */
+  randomize?: boolean;
 }
 
 export interface TeamSplit {
@@ -158,14 +163,28 @@ function filterByComposition(
   return { eligible, excluded };
 }
 
-/** 공정성 정렬: 게임수 asc → 마지막게임순번 asc(미출전 우선) → 대기시작 asc */
-function fairnessSort(players: PlayerState[]): PlayerState[] {
-  return [...players].sort((a, b) => {
+/** Fisher-Yates 셔플(제자리). */
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * 공정성 정렬: 게임수 asc → 마지막게임순번 asc(미출전 우선) → 대기시작 asc.
+ * randomize=true 면 사전 셔플 후 (게임수·순번)만으로 안정 정렬 →
+ * 완전 동률 후보들은 무작위 순서가 유지된다(세션 초반 변화 확보).
+ */
+function fairnessSort(players: PlayerState[], randomize = false): PlayerState[] {
+  const arr = randomize ? shuffle([...players]) : [...players];
+  return arr.sort((a, b) => {
     if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
     const la = a.lastPlayedSeq ?? -1;
     const lb = b.lastPlayedSeq ?? -1;
     if (la !== lb) return la - lb;
-    return (a.waitingSince ?? 0) - (b.waitingSince ?? 0);
+    return randomize ? 0 : (a.waitingSince ?? 0) - (b.waitingSince ?? 0);
   });
 }
 
@@ -295,7 +314,7 @@ export function recommendGame(
   const { eligible, excluded } = filterByComposition(waiting, composition);
   if (eligible.length < gameSize) return null;
 
-  const sorted = fairnessSort(eligible);
+  const sorted = fairnessSort(eligible, options.randomize);
   const locked = sorted.filter((p) => p.locked);
   if (locked.length > gameSize) return null;
 

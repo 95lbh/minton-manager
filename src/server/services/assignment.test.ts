@@ -66,6 +66,24 @@ describe("공정성", () => {
     const rec = recommendGame(players, EMPTY_HISTORY, baseOptions);
     expect(rec!.players).toContain("e");
   });
+
+  it("randomize=true 여도 적게 친 사람이 우선된다(공정성 유지)", () => {
+    const players = [
+      player("a", { gamesPlayed: 3, lastPlayedSeq: 3 }),
+      player("b", { gamesPlayed: 3, lastPlayedSeq: 3 }),
+      player("c", { gamesPlayed: 3, lastPlayedSeq: 3 }),
+      player("d", { gamesPlayed: 3, lastPlayedSeq: 3 }),
+      player("e", { gamesPlayed: 0, lastPlayedSeq: null }),
+    ];
+    // 여러 번 돌려도 0게임 e는 항상 포함되어야 한다.
+    for (let i = 0; i < 20; i++) {
+      const rec = recommendGame(players, EMPTY_HISTORY, {
+        ...baseOptions,
+        randomize: true,
+      });
+      expect(rec!.players).toContain("e");
+    }
+  });
 });
 
 describe("파트너 중복 회피", () => {
