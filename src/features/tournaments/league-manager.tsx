@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,13 +15,21 @@ function unitKey(side: { id: string; name: string }[]) {
   return side.map((p) => p.id).sort().join("+");
 }
 
+/** 제외 인원 안내 토스트(이름 일부 + N명). */
+export function warnExcluded(excludedNames: string[]) {
+  if (excludedNames.length === 0) return;
+  const shown = excludedNames.slice(0, 3).join(", ");
+  const more = excludedNames.length > 3 ? ` 외 ${excludedNames.length - 3}명` : "";
+  toast.warning(`편성에서 제외: ${shown}${more} (성별/페어 조건)`);
+}
+
 function MatchRow({
   match,
-  pending,
+  disabled,
   onSave,
 }: {
   match: MatchView;
-  pending: boolean;
+  disabled: boolean;
   onSave: (matchId: string, a: number, b: number) => void;
 }) {
   const [a, setA] = useState(match.scoreBlue?.toString() ?? "");
@@ -53,7 +60,7 @@ function MatchRow({
         value={a}
         onChange={(e) => setA(e.target.value)}
         onBlur={save}
-        disabled={pending}
+        disabled={disabled}
         className="h-8 w-14 text-center"
         aria-label="왼쪽 점수"
       />
@@ -64,7 +71,7 @@ function MatchRow({
         value={b}
         onChange={(e) => setB(e.target.value)}
         onBlur={save}
-        disabled={pending}
+        disabled={disabled}
         className="h-8 w-14 text-center"
         aria-label="오른쪽 점수"
       />
@@ -84,9 +91,15 @@ export function LeagueManager({
   matches: MatchView[];
   locked?: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const disabled = pending || locked;
+  // 점수 입력을 즉시 반영(낙관적). 서버 revalidate 후 props와 동기화.
+  const [optMatches, applyScore] = useOptimistic(
+    matches,
+    (state: MatchView[], u: { matchId: string; a: number; b: number }) =>
+      state.map((m) =>
+        m.id === u.matchId ? { ...m, scoreBlue: u.a, scoreWhite: u.b } : m,
+      ),
+  );
 
   const standings = useMemo(() => {
     type Row = { label: string; played: number; wins: number; losses: number; pf: number; pa: number };
@@ -96,7 +109,7 @@ export function LeagueManager({
       if (!units.has(key)) units.set(key, { label: names(side), played: 0, wins: 0, losses: 0, pf: 0, pa: 0 });
       return key;
     };
-    for (const m of matches) {
+    for (const m of optMatches) {
       const bk = reg(m.blue);
       const wk = reg(m.white);
       if (m.scoreBlue == null || m.scoreWhite == null) continue;
@@ -111,7 +124,7 @@ export function LeagueManager({
     return [...units.values()].sort(
       (a, b) => b.wins - a.wins || b.pf - b.pa - (a.pf - a.pa) || a.label.localeCompare(b.label),
     );
-  }, [matches]);
+  }, [optMatches]);
 
   const generate = () => {
     if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?"))
@@ -120,10 +133,7 @@ export function LeagueManager({
       const res = await generateLeague(tournamentId);
       if (res.ok) {
         toast.success("리그 대진을 생성했습니다.");
-        if (res.data && res.data.excluded > 0) {
-          toast.warning(`복식 페어가 안 맞아 ${res.data.excluded}명은 제외됐어요.`);
-        }
-        router.refresh();
+        if (res.data) warnExcluded(res.data.excludedNames);
       } else {
         toast.error(res.error.message);
       }
@@ -132,13 +142,9 @@ export function LeagueManager({
 
   const saveResult = (matchId: string, a: number, b: number) => {
     startTransition(async () => {
+      applyScore({ matchId, a, b });
       const res = await setMatchResult(matchId, tournamentId, a, b);
-      if (res.ok) {
-        toast.success("점수를 저장했습니다.");
-        router.refresh();
-      } else {
-        toast.error(res.error.message);
-      }
+      if (!res.ok) toast.error(res.error.message);
     });
   };
 
@@ -151,7 +157,7 @@ export function LeagueManager({
             모두 서로 한 번씩 겨룹니다. 복식은 실력 균형 페어로 자동 구성됩니다.
           </p>
         </div>
-        <Button onClick={generate} disabled={disabled}>
+        <Button onClick={generate} disabled={pending || locked}>
           <Network className="mr-1 h-4 w-4" /> 대진 생성
         </Button>
       </div>
@@ -186,10 +192,10 @@ export function LeagueManager({
         </div>
       )}
 
-      {matches.length > 0 && (
+      {optMatches.length > 0 && (
         <ol className="mt-3 space-y-1">
-          {matches.map((m) => (
-            <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
+          {optMatches.map((m) => (
+            <MatchRow key={m.id} match={m} disabled={locked} onSave={saveResult} />
           ))}
         </ol>
       )}

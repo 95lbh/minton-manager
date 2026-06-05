@@ -50,7 +50,7 @@ export async function createTournament(
  */
 export async function generateLeague(
   tournamentId: string,
-): Promise<ActionResult<{ excluded: number }>> {
+): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
 
@@ -65,21 +65,23 @@ export async function generateLeague(
 
   const { data: parts, error: pErr } = await supabase
     .from("tournament_participants")
-    .select("id, level")
+    .select("id, name, level")
     .eq("tournament_id", tournamentId);
   if (pErr || !parts) {
     return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
   }
 
+  const nameOf = new Map(parts.map((p) => [p.id as string, p.name as string]));
+
   // 유닛 구성: 단식=개인 1명, 복식=페어 2명
   let units: string[][];
-  let excluded = 0;
+  let excludedNames: string[] = [];
   if (isDoubles) {
     const { pairs, unpaired } = makePairs(
       parts.map((p) => ({ id: p.id as string, level: p.level as number | null })),
     );
     units = pairs.map((pr) => [...pr]);
-    excluded = unpaired.length;
+    excludedNames = unpaired.map((id) => nameOf.get(id) ?? "참가자");
   } else {
     units = parts.map((p) => [p.id as string]);
   }
@@ -118,8 +120,8 @@ export async function generateLeague(
     return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
   }
 
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
-  return { ok: true, data: { excluded } };
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
+  return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
 }
 
 /**
@@ -128,7 +130,7 @@ export async function generateLeague(
  */
 export async function generateTournamentRound1(
   tournamentId: string,
-): Promise<ActionResult<{ excluded: number }>> {
+): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
 
@@ -143,12 +145,13 @@ export async function generateTournamentRound1(
 
   const { data: parts, error: pErr } = await supabase
     .from("tournament_participants")
-    .select("id, level, seed")
+    .select("id, name, level, seed")
     .eq("tournament_id", tournamentId);
   if (pErr || !parts) {
     return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
   }
 
+  const nameOf = new Map(parts.map((p) => [p.id as string, p.name as string]));
   const levelOf = new Map(parts.map((p) => [p.id as string, (p.level as number | null) ?? DEFAULT_LEVEL]));
   const seedOf = new Map(parts.map((p) => [p.id as string, p.seed as number | null]));
   const hasManualSeed = parts.some((p) => p.seed != null);
@@ -157,13 +160,13 @@ export async function generateTournamentRound1(
     ids.reduce((s, id) => s + (seedOf.get(id) ?? Number.MAX_SAFE_INTEGER), 0);
 
   let units: { ids: string[]; skill: number }[];
-  let excluded = 0;
+  let excludedNames: string[] = [];
   if (isDoubles) {
     const { pairs, unpaired } = makePairs(
       parts.map((p) => ({ id: p.id as string, level: p.level as number | null })),
     );
     units = pairs.map(([a, b]) => ({ ids: [a, b], skill: levelOf.get(a)! + levelOf.get(b)! }));
-    excluded = unpaired.length;
+    excludedNames = unpaired.map((id) => nameOf.get(id) ?? "참가자");
   } else {
     units = parts.map((p) => ({ ids: [p.id as string], skill: levelOf.get(p.id as string)! }));
   }
@@ -203,8 +206,8 @@ export async function generateTournamentRound1(
     return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
   }
 
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
-  return { ok: true, data: { excluded } };
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
+  return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
 }
 
 /** 토너먼트 다음 라운드 생성: 현재 마지막 라운드 승자끼리 대진. */
@@ -278,7 +281,7 @@ export async function generateNextRound(
     return { ok: false, error: { message: "다음 라운드 저장에 실패했습니다.", detail: sErr.message } };
   }
 
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -306,7 +309,7 @@ export async function setMatchResult(
   if (error) {
     return { ok: false, error: { message: "결과 저장에 실패했습니다.", detail: error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -405,7 +408,7 @@ export async function addParticipantsFromMembers(
   if (error) {
     return { ok: false, error: { message: "참가자 등록에 실패했습니다.", detail: error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -432,7 +435,7 @@ export async function addGuestParticipant(
   if (error) {
     return { ok: false, error: { message: "참가자 등록에 실패했습니다.", detail: error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -475,7 +478,7 @@ export async function autoSplitTeams(tournamentId: string): Promise<ActionResult
     if (e2) return { ok: false, error: { message: "팀 배정에 실패했습니다.", detail: e2.message } };
   }
 
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -486,7 +489,7 @@ export async function autoSplitTeams(tournamentId: string): Promise<ActionResult
 export async function generateTeamGames(
   tournamentId: string,
   gamesPerPlayer: number,
-): Promise<ActionResult<{ excluded: number }>> {
+): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
   const n = Math.max(1, Math.floor(gamesPerPlayer));
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
@@ -502,11 +505,21 @@ export async function generateTeamGames(
 
   const { data: parts, error: pErr } = await supabase
     .from("tournament_participants")
-    .select("id, gender, level, team")
+    .select("id, name, gender, level, team")
     .eq("tournament_id", tournamentId);
   if (pErr || !parts) {
     return { ok: false, error: { message: "참가자를 불러오지 못했습니다.", detail: pErr?.message } };
   }
+
+  // 팀에 속하지만 성별이 남/여가 아니라 편성 불가한 인원(제외 대상).
+  const excludedNames = parts
+    .filter(
+      (p) =>
+        (p.team === "blue" || p.team === "white") &&
+        p.gender !== "male" &&
+        p.gender !== "female",
+    )
+    .map((p) => p.name as string);
 
   const toSched = (p: (typeof parts)[number]) => ({
     id: p.id as string,
@@ -516,7 +529,7 @@ export async function generateTeamGames(
   const blue = parts.filter((p) => p.team === "blue").map(toSched);
   const white = parts.filter((p) => p.team === "white").map(toSched);
 
-  const { games, reason, excluded } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
+  const { games, reason } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
   if (reason) return { ok: false, error: { message: reason } };
   if (games.length === 0) {
     return { ok: false, error: { message: "편성할 게임이 없습니다. 팀 배정을 확인하세요." } };
@@ -555,8 +568,8 @@ export async function generateTeamGames(
     return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
   }
 
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
-  return { ok: true, data: { excluded } };
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
+  return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
 }
 
 /** 참가자 팀 수동 지정/해제(blue/white/null). */
@@ -574,7 +587,7 @@ export async function setParticipantTeam(
   if (error) {
     return { ok: false, error: { message: "팀 변경에 실패했습니다.", detail: error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -593,7 +606,7 @@ export async function setSeedOrder(
   if (failed?.error) {
     return { ok: false, error: { message: "시드 저장에 실패했습니다.", detail: failed.error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }
 
@@ -611,6 +624,6 @@ export async function removeParticipant(
   if (error) {
     return { ok: false, error: { message: "참가자 제거에 실패했습니다.", detail: error.message } };
   }
-  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`);
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
   return { ok: true };
 }

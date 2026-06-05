@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { GitFork, Trophy, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
   generateNextRound,
   setMatchResult,
 } from "@/server/mutations/tournaments";
+import { warnExcluded } from "@/features/tournaments/league-manager";
 import type { MatchView } from "@/server/queries/tournaments";
 
 const names = (side: { id: string; name: string }[]) =>
@@ -37,11 +37,11 @@ function winnerSide(m: MatchView): "blue" | "white" | null {
 /** 브래킷 셀: 위(청)·아래(백) 2명 스택 + 가운데 점수. */
 function MatchCard({
   match,
-  pending,
+  disabled,
   onSave,
 }: {
   match: MatchView;
-  pending: boolean;
+  disabled: boolean;
   onSave: (matchId: string, a: number, b: number) => void;
 }) {
   const [a, setA] = useState(match.scoreBlue?.toString() ?? "");
@@ -75,7 +75,7 @@ function MatchCard({
           value={score}
           onChange={(e) => setScore(e.target.value)}
           onBlur={save}
-          disabled={pending}
+          disabled={disabled}
           className="h-7 w-12 text-center"
           aria-label={`${side === "blue" ? "위" : "아래"} 점수`}
         />
@@ -102,13 +102,19 @@ export function TournamentManager({
   matches: MatchView[];
   locked?: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const disabled = pending || locked;
+  // 점수 입력 즉시 반영(낙관적). 우승자·다음 라운드 가능 여부도 함께 갱신.
+  const [optMatches, applyScore] = useOptimistic(
+    matches,
+    (state: MatchView[], u: { matchId: string; a: number; b: number }) =>
+      state.map((m) =>
+        m.id === u.matchId ? { ...m, scoreBlue: u.a, scoreWhite: u.b } : m,
+      ),
+  );
 
   const { rounds, maxRound, champion, canAdvance } = useMemo(() => {
     const byRound = new Map<number, MatchView[]>();
-    for (const m of matches) {
+    for (const m of optMatches) {
       const r = m.round ?? 0;
       if (!byRound.has(r)) byRound.set(r, []);
       byRound.get(r)!.push(m);
@@ -129,28 +135,35 @@ export function TournamentManager({
       champion: champ,
       canAdvance: advance,
     };
-  }, [matches]);
+  }, [optMatches]);
 
+  // 대진 생성/다음 라운드(구조 변경) — revalidate로 갱신, 제외 인원 안내.
   const run = (
-    fn: () => Promise<{ ok: boolean; error?: { message: string }; data?: { excluded: number } }>,
+    fn: () => Promise<{
+      ok: boolean;
+      error?: { message: string };
+      data?: { excludedNames?: string[] };
+    }>,
     msg: string,
   ) => {
     startTransition(async () => {
       const res = await fn();
       if (res.ok) {
         toast.success(msg);
-        if (res.data && res.data.excluded > 0) {
-          toast.warning(`복식 페어가 안 맞아 ${res.data.excluded}명은 제외됐어요.`);
-        }
-        router.refresh();
+        warnExcluded(res.data?.excludedNames ?? []);
       } else {
         toast.error(res.error?.message ?? "오류가 발생했습니다.");
       }
     });
   };
 
-  const saveResult = (matchId: string, a: number, b: number) =>
-    run(() => setMatchResult(matchId, tournamentId, a, b), "점수를 저장했습니다.");
+  const saveResult = (matchId: string, a: number, b: number) => {
+    startTransition(async () => {
+      applyScore({ matchId, a, b });
+      const res = await setMatchResult(matchId, tournamentId, a, b);
+      if (!res.ok) toast.error(res.error.message);
+    });
+  };
 
   return (
     <section className="rounded-lg border bg-card p-5">
@@ -166,7 +179,7 @@ export function TournamentManager({
             if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?")) return;
             run(() => generateTournamentRound1(tournamentId), "대진을 생성했습니다.");
           }}
-          disabled={disabled}
+          disabled={pending || locked}
         >
           <GitFork className="mr-1 h-4 w-4" /> 대진 생성
         </Button>
@@ -188,7 +201,7 @@ export function TournamentManager({
               </h3>
               <div className="flex flex-1 flex-col justify-around gap-3">
                 {ms.map((m) => (
-                  <MatchCard key={m.id} match={m} pending={disabled} onSave={saveResult} />
+                  <MatchCard key={m.id} match={m} disabled={locked} onSave={saveResult} />
                 ))}
               </div>
             </div>
@@ -201,7 +214,7 @@ export function TournamentManager({
           variant="outline"
           className="mt-4 w-full"
           onClick={() => run(() => generateNextRound(tournamentId), "다음 라운드를 만들었습니다.")}
-          disabled={disabled || !canAdvance}
+          disabled={pending || locked || !canAdvance}
         >
           다음 라운드 생성 <ChevronRight className="ml-1 h-4 w-4" />
         </Button>

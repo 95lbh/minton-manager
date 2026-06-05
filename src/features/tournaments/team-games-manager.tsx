@@ -1,23 +1,23 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateTeamGames, setMatchResult } from "@/server/mutations/tournaments";
+import { warnExcluded } from "@/features/tournaments/league-manager";
 import { TEAM_LABEL } from "@/lib/constants";
 import type { MatchView } from "@/server/queries/tournaments";
 
 function MatchRow({
   match,
-  pending,
+  disabled,
   onSave,
 }: {
   match: MatchView;
-  pending: boolean;
+  disabled: boolean;
   onSave: (matchId: string, scoreBlue: number, scoreWhite: number) => void;
 }) {
   const [b, setB] = useState(match.scoreBlue?.toString() ?? "");
@@ -49,7 +49,7 @@ function MatchRow({
         value={b}
         onChange={(e) => setB(e.target.value)}
         onBlur={save}
-        disabled={pending}
+        disabled={disabled}
         className="h-8 w-14 text-center"
         aria-label="청팀 점수"
       />
@@ -60,7 +60,7 @@ function MatchRow({
         value={w}
         onChange={(e) => setW(e.target.value)}
         onBlur={save}
-        disabled={pending}
+        disabled={disabled}
         className="h-8 w-14 text-center"
         aria-label="백팀 점수"
       />
@@ -83,10 +83,16 @@ export function TeamGamesManager({
   gamesPerPlayer: number;
   locked?: boolean;
 }) {
-  const router = useRouter();
   const [n, setN] = useState(gamesPerPlayer);
   const [pending, startTransition] = useTransition();
-  const disabled = pending || locked;
+  // 점수 입력 즉시 반영(낙관적). 팀 스코어 요약도 함께 갱신.
+  const [optMatches, applyScore] = useOptimistic(
+    matches,
+    (state: MatchView[], u: { matchId: string; a: number; b: number }) =>
+      state.map((m) =>
+        m.id === u.matchId ? { ...m, scoreBlue: u.a, scoreWhite: u.b } : m,
+      ),
+  );
 
   const standings = useMemo(() => {
     let blueWins = 0,
@@ -94,7 +100,7 @@ export function TeamGamesManager({
       blueScore = 0,
       whiteScore = 0,
       played = 0;
-    for (const m of matches) {
+    for (const m of optMatches) {
       if (m.scoreBlue == null || m.scoreWhite == null) continue;
       played++;
       blueScore += m.scoreBlue;
@@ -103,7 +109,7 @@ export function TeamGamesManager({
       else if (m.scoreWhite > m.scoreBlue) whiteWins++;
     }
     return { blueWins, whiteWins, blueScore, whiteScore, played };
-  }, [matches]);
+  }, [optMatches]);
 
   const generate = () => {
     if (
@@ -115,10 +121,7 @@ export function TeamGamesManager({
       const res = await generateTeamGames(tournamentId, n);
       if (res.ok) {
         toast.success("게임을 편성했습니다.");
-        if (res.data && res.data.excluded > 0) {
-          toast.warning(`성별 미지정 ${res.data.excluded}명은 편성에서 제외됐어요.`);
-        }
-        router.refresh();
+        if (res.data) warnExcluded(res.data.excludedNames);
       } else {
         toast.error(res.error.message);
       }
@@ -127,13 +130,9 @@ export function TeamGamesManager({
 
   const saveResult = (matchId: string, scoreBlue: number, scoreWhite: number) => {
     startTransition(async () => {
+      applyScore({ matchId, a: scoreBlue, b: scoreWhite });
       const res = await setMatchResult(matchId, tournamentId, scoreBlue, scoreWhite);
-      if (res.ok) {
-        toast.success("점수를 저장했습니다.");
-        router.refresh();
-      } else {
-        toast.error(res.error.message);
-      }
+      if (!res.ok) toast.error(res.error.message);
     });
   };
 
@@ -157,16 +156,16 @@ export function TeamGamesManager({
             max={30}
             value={n}
             onChange={(e) => setN(Math.max(1, Number(e.target.value) || 1))}
-            disabled={disabled}
+            disabled={pending || locked}
             className="w-28"
           />
         </div>
-        <Button onClick={generate} disabled={disabled}>
+        <Button onClick={generate} disabled={pending || locked}>
           <ListChecks className="mr-1 h-4 w-4" /> 게임 편성
         </Button>
       </div>
 
-      {matches.length > 0 && (
+      {optMatches.length > 0 && (
         <>
           {/* 팀 스코어 요약 */}
           <div className="mt-4 flex items-center justify-center gap-4 rounded-lg border bg-muted/30 p-3 text-sm">
@@ -177,7 +176,7 @@ export function TeamGamesManager({
               </p>
             </div>
             <span className="text-muted-foreground">
-              {standings.played}/{matches.length} 게임
+              {standings.played}/{optMatches.length} 게임
             </span>
             <div className="rounded-md bg-rose-100 px-3 py-1 text-center text-rose-900">
               <p className="text-xs">{TEAM_LABEL.white}</p>
@@ -188,8 +187,8 @@ export function TeamGamesManager({
           </div>
 
           <ol className="mt-3 space-y-1">
-            {matches.map((m) => (
-              <MatchRow key={m.id} match={m} pending={disabled} onSave={saveResult} />
+            {optMatches.map((m) => (
+              <MatchRow key={m.id} match={m} disabled={locked} onSave={saveResult} />
             ))}
           </ol>
         </>
