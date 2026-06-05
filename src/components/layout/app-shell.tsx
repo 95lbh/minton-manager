@@ -38,7 +38,7 @@ export function AppShell({
             </form>
           </div>
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-2">
+        <div className="mx-auto max-w-6xl px-4">
           <AppNav />
         </div>
       </header>
