@@ -46,6 +46,43 @@ const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   },
 ];
 
+const SITE_URL = "https://www.myminton.com";
+
+// 검색엔진용 구조화 데이터(schema.org). 서비스 정체성·로고·기능을 명시적으로 알린다.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#org`,
+      name: "마이민턴",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon-512.png`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "마이민턴 (myminton)",
+      inLanguage: "ko-KR",
+      publisher: { "@id": `${SITE_URL}/#org` },
+    },
+    {
+      "@type": "WebApplication",
+      name: "마이민턴 (myminton)",
+      url: SITE_URL,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      inLanguage: "ko-KR",
+      description:
+        "출석·코트 자동 배정·게임·통계를 한 곳에서. 배드민턴 동호회 운영·관리 서비스.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+      publisher: { "@id": `${SITE_URL}/#org` },
+      featureList: FEATURES.map((f) => f.title),
+    },
+  ],
+};
+
 /**
  * 첫 진입(랜딩). 로그인/익명 세션이 있으면 대시보드로.
  * 비로그인 방문자에겐 서비스 소개 + 시작 카드를 보여준다(검색 색인 + 첫인상).
@@ -58,6 +95,11 @@ export default async function Home() {
 
   return (
     <main className="min-h-dvh bg-muted/20">
+      {/* 구조화 데이터 (검색엔진 전용, 화면 미표시) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       <div className="mx-auto max-w-5xl px-6 py-12 sm:py-20">
         {/* Hero */}
         <div className="grid items-center gap-10 lg:grid-cols-2">
