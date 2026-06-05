@@ -4,13 +4,28 @@ import { Toaster } from "@/components/ui/sonner";
 import { PwaRegister } from "@/components/pwa-register";
 import { AuthErrorHandler } from "@/features/auth/auth-error-handler";
 
-const APP_DESC = "배드민턴 동호회 운영을 한 곳에서 — 출석 · 코트 배정 · 게임 · 통계.";
+// 검색 결과/공유에 노출되는 카피. 강점(동호회 운영·관리)과 혜택을 앞세운다.
+const APP_TITLE = "마이민턴 — 배드민턴 동호회 출석·코트 배정·통계";
+const APP_DESC =
+  "출석·코트 자동 배정·게임·통계를 한 곳에서. 가입 없이 회원 관리, 모바일로 현장에서 바로 — 배드민턴 동호회 운영은 마이민턴.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.myminton.com"),
-  title: "마이민턴 (myminton)",
+  title: APP_TITLE,
   description: APP_DESC,
   applicationName: "마이민턴",
+  keywords: [
+    "마이민턴",
+    "myminton",
+    "배드민턴",
+    "배드민턴 동호회",
+    "동호회 관리",
+    "동호회 운영",
+    "출석 체크",
+    "코트 배정",
+    "게임 운영",
+    "배드민턴 통계",
+  ],
   appleWebApp: {
     capable: true,
     title: "마이민턴",
@@ -26,12 +41,12 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "/",
     siteName: "마이민턴 (myminton)",
-    title: "마이민턴 (myminton)",
+    title: APP_TITLE,
     description: APP_DESC,
   },
   twitter: {
     card: "summary_large_image",
-    title: "마이민턴 (myminton)",
+    title: APP_TITLE,
     description: APP_DESC,
   },
 };
