@@ -102,11 +102,18 @@ export function LeagueManager({
   );
 
   const standings = useMemo(() => {
-    type Row = { label: string; played: number; wins: number; losses: number; pf: number; pa: number };
+    type Row = { key: string; label: string; played: number; wins: number; losses: number; pf: number; pa: number };
     const units = new Map<string, Row>();
+    // 직접전(head-to-head): winnerKey → loserKey → 승 횟수
+    const h2h = new Map<string, Map<string, number>>();
+    const beat = (wk: string, lk: string) => {
+      if (!h2h.has(wk)) h2h.set(wk, new Map());
+      const m = h2h.get(wk)!;
+      m.set(lk, (m.get(lk) ?? 0) + 1);
+    };
     const reg = (side: { id: string; name: string }[]) => {
       const key = unitKey(side);
-      if (!units.has(key)) units.set(key, { label: names(side), played: 0, wins: 0, losses: 0, pf: 0, pa: 0 });
+      if (!units.has(key)) units.set(key, { key, label: names(side), played: 0, wins: 0, losses: 0, pf: 0, pa: 0 });
       return key;
     };
     for (const m of optMatches) {
@@ -118,11 +125,17 @@ export function LeagueManager({
       ub.played++; uw.played++;
       ub.pf += m.scoreBlue; ub.pa += m.scoreWhite;
       uw.pf += m.scoreWhite; uw.pa += m.scoreBlue;
-      if (m.scoreBlue > m.scoreWhite) { ub.wins++; uw.losses++; }
-      else if (m.scoreWhite > m.scoreBlue) { uw.wins++; ub.losses++; }
+      if (m.scoreBlue > m.scoreWhite) { ub.wins++; uw.losses++; beat(bk, wk); }
+      else if (m.scoreWhite > m.scoreBlue) { uw.wins++; ub.losses++; beat(wk, bk); }
     }
+    const h2hWins = (x: string, y: string) => h2h.get(x)?.get(y) ?? 0;
+    // 정렬: 승수 → 직접전(맞대결 우위) → 득실 → 이름
     return [...units.values()].sort(
-      (a, b) => b.wins - a.wins || b.pf - b.pa - (a.pf - a.pa) || a.label.localeCompare(b.label),
+      (a, b) =>
+        b.wins - a.wins ||
+        h2hWins(b.key, a.key) - h2hWins(a.key, b.key) ||
+        b.pf - b.pa - (a.pf - a.pa) ||
+        a.label.localeCompare(b.label),
     );
   }, [optMatches]);
 
@@ -163,7 +176,11 @@ export function LeagueManager({
       </div>
 
       {standings.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-lg border">
+        <div className="mt-4">
+          <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
+            순위 <span className="font-normal">(승 → 직접전 → 득실)</span>
+          </h3>
+          <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
@@ -175,7 +192,7 @@ export function LeagueManager({
             </thead>
             <tbody>
               {standings.map((r, i) => (
-                <tr key={r.label} className="border-t">
+                <tr key={r.key} className="border-t">
                   <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                   <td className="px-3 py-2">{r.label}</td>
                   <td className="px-3 py-2 text-center">
@@ -189,6 +206,7 @@ export function LeagueManager({
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

@@ -137,6 +137,53 @@ export function TournamentManager({
     };
   }, [optMatches]);
 
+  // 최종 순위: 탈락 라운드가 깊을수록 상위. 같은 라운드 탈락은 공동 순위.
+  const finalStandings = useMemo(() => {
+    if (!champion) return [];
+    type U = { key: string; label: string; lostRound: number };
+    const units = new Map<string, U>();
+    const keyOf = (side: { id: string; name: string }[]) =>
+      side.map((p) => p.id).sort().join("+");
+    const reg = (side: { id: string; name: string }[]) => {
+      if (side.length === 0) return null;
+      const k = keyOf(side);
+      if (!units.has(k)) units.set(k, { key: k, label: names(side), lostRound: 0 });
+      return k;
+    };
+    for (const m of optMatches) {
+      const r = m.round ?? 0;
+      const bk = reg(m.blue);
+      const wk = reg(m.white);
+      const w = winnerSide(m);
+      if (!w) continue;
+      const loser = w === "blue" ? wk : bk;
+      if (loser) units.get(loser)!.lostRound = Math.max(units.get(loser)!.lostRound, r);
+    }
+    // 챔피언(패배 없음)은 lostRound=0 → 가장 위로(탈락 라운드 큰 순 정렬에서 별도 처리).
+    const champKey = [...units.values()].find((u) => u.lostRound === 0)?.key;
+    const arr = [...units.values()].sort((a, b) => {
+      if (a.key === champKey) return -1;
+      if (b.key === champKey) return 1;
+      return b.lostRound - a.lostRound || a.label.localeCompare(b.label);
+    });
+    // 공동 순위 부여
+    const counts = new Map<number, number>();
+    arr.forEach((u) => counts.set(u.lostRound, (counts.get(u.lostRound) ?? 0) + 1));
+    let rank = 0;
+    let prev: number | null = null;
+    return arr.map((u, i) => {
+      if (u.key === champKey) {
+        rank = 1;
+        prev = -1;
+      } else if (u.lostRound !== prev) {
+        rank = i + 1;
+        prev = u.lostRound;
+      }
+      const tied = u.key !== champKey && (counts.get(u.lostRound) ?? 0) > 1;
+      return { key: u.key, label: u.label, rank, tied };
+    });
+  }, [optMatches, champion]);
+
   // 대진 생성/다음 라운드(구조 변경) — revalidate로 갱신, 제외 인원 안내.
   const run = (
     fn: () => Promise<{
@@ -189,6 +236,30 @@ export function TournamentManager({
         <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
           <Trophy className="h-5 w-5" />
           <span className="font-semibold">우승: {champion}</span>
+        </div>
+      )}
+
+      {finalStandings.length > 0 && (
+        <div className="mt-3">
+          <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
+            최종 순위
+          </h3>
+          <ol className="overflow-hidden rounded-lg border">
+            {finalStandings.map((s) => (
+              <li
+                key={s.key}
+                className="flex items-center gap-3 border-t px-3 py-2 text-sm first:border-t-0"
+              >
+                <span
+                  className={`w-12 shrink-0 text-xs font-semibold ${s.rank <= 3 ? "text-amber-600" : "text-muted-foreground"}`}
+                >
+                  {s.tied ? "공동 " : ""}
+                  {s.rank}위
+                </span>
+                <span className="min-w-0 truncate">{s.label}</span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 

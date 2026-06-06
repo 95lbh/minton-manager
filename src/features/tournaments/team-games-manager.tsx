@@ -111,6 +111,35 @@ export function TeamGamesManager({
     return { blueWins, whiteWins, blueScore, whiteScore, played };
   }, [optMatches]);
 
+  // 개인 통계: 참가자별 출전·승·총점 (결과 입력된 게임 기준).
+  const individuals = useMemo(() => {
+    type Row = { id: string; name: string; team: "blue" | "white"; games: number; wins: number; points: number };
+    const map = new Map<string, Row>();
+    const touch = (
+      p: { id: string; name: string },
+      team: "blue" | "white",
+      won: boolean,
+      pts: number,
+    ) => {
+      const e =
+        map.get(p.id) ?? { id: p.id, name: p.name, team, games: 0, wins: 0, points: 0 };
+      e.games++;
+      if (won) e.wins++;
+      e.points += pts;
+      map.set(p.id, e);
+    };
+    for (const m of optMatches) {
+      if (m.scoreBlue == null || m.scoreWhite == null) continue;
+      const blueWon = m.scoreBlue > m.scoreWhite;
+      const whiteWon = m.scoreWhite > m.scoreBlue;
+      m.blue.forEach((p) => touch(p, "blue", blueWon, m.scoreBlue!));
+      m.white.forEach((p) => touch(p, "white", whiteWon, m.scoreWhite!));
+    }
+    return [...map.values()].sort(
+      (a, b) => b.wins - a.wins || b.points - a.points || a.name.localeCompare(b.name),
+    );
+  }, [optMatches]);
+
   const generate = () => {
     if (
       matches.length > 0 &&
@@ -185,6 +214,43 @@ export function TeamGamesManager({
               </p>
             </div>
           </div>
+
+          {individuals.length > 0 && (
+            <div className="mt-4">
+              <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                개인 기록
+              </h3>
+              <div className="overflow-hidden rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left">선수</th>
+                      <th className="px-3 py-2 text-center">게임</th>
+                      <th className="px-3 py-2 text-center">승</th>
+                      <th className="px-3 py-2 text-center">총점</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {individuals.map((r) => (
+                      <tr key={r.id} className="border-t">
+                        <td className="px-3 py-2">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`size-2 shrink-0 rounded-full ${r.team === "blue" ? "bg-sky-500" : "bg-rose-500"}`}
+                            />
+                            <span className="truncate">{r.name}</span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-muted-foreground">{r.games}</td>
+                        <td className="px-3 py-2 text-center font-medium">{r.wins}</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground">{r.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <ol className="mt-3 space-y-1">
             {optMatches.map((m) => (
