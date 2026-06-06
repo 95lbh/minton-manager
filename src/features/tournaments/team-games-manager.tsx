@@ -2,12 +2,13 @@
 
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateTeamGames, setMatchResult } from "@/server/mutations/tournaments";
 import { warnExcluded } from "@/features/tournaments/league-manager";
+import { copyStandings } from "@/features/tournaments/share";
 import { TEAM_LABEL } from "@/lib/constants";
 import type { MatchView } from "@/server/queries/tournaments";
 
@@ -74,11 +75,13 @@ function MatchRow({
 
 export function TeamGamesManager({
   tournamentId,
+  tournamentName,
   matches,
   gamesPerPlayer,
   locked = false,
 }: {
   tournamentId: string;
+  tournamentName: string;
   matches: MatchView[];
   gamesPerPlayer: number;
   locked?: boolean;
@@ -165,6 +168,16 @@ export function TeamGamesManager({
     });
   };
 
+  const copyResult = () =>
+    copyStandings(`[${tournamentName}] 청백전 결과`, [
+      `${TEAM_LABEL.blue} ${standings.blueWins}승 ${standings.blueScore}점 / ${TEAM_LABEL.white} ${standings.whiteWins}승 ${standings.whiteScore}점`,
+      "",
+      "개인 기록",
+      ...individuals.map(
+        (r, i) => `${i + 1}. ${r.name} (${r.wins}승, ${r.points}점, ${r.games}게임)`,
+      ),
+    ]);
+
   return (
     <section className="rounded-lg border bg-card p-5">
       <h2 className="text-sm font-semibold">게임 편성 / 결과</h2>
@@ -217,9 +230,14 @@ export function TeamGamesManager({
 
           {individuals.length > 0 && (
             <div className="mt-4">
-              <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
-                개인 기록
-              </h3>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold text-muted-foreground">
+                  개인 기록
+                </h3>
+                <Button variant="ghost" size="sm" onClick={copyResult}>
+                  <Copy className="mr-1 h-3.5 w-3.5" /> 결과 복사
+                </Button>
+              </div>
               <div className="overflow-hidden rounded-lg border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">

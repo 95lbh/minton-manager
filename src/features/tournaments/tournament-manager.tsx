@@ -2,7 +2,7 @@
 
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { GitFork, Trophy, ChevronRight } from "lucide-react";
+import { GitFork, Trophy, ChevronRight, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   setMatchResult,
 } from "@/server/mutations/tournaments";
 import { warnExcluded } from "@/features/tournaments/league-manager";
+import { copyStandings } from "@/features/tournaments/share";
 import type { MatchView } from "@/server/queries/tournaments";
 
 const names = (side: { id: string; name: string }[]) =>
@@ -95,10 +96,12 @@ function MatchCard({
 
 export function TournamentManager({
   tournamentId,
+  tournamentName,
   matches,
   locked = false,
 }: {
   tournamentId: string;
+  tournamentName: string;
   matches: MatchView[];
   locked?: boolean;
 }) {
@@ -212,6 +215,14 @@ export function TournamentManager({
     });
   };
 
+  const copyResult = () =>
+    copyStandings(
+      `[${tournamentName}] 토너먼트 최종 순위`,
+      finalStandings.map(
+        (s) => `${s.tied ? "공동 " : ""}${s.rank}위 ${s.label}`,
+      ),
+    );
+
   return (
     <section className="rounded-lg border bg-card p-5">
       <div className="flex items-center justify-between gap-3">
@@ -241,9 +252,14 @@ export function TournamentManager({
 
       {finalStandings.length > 0 && (
         <div className="mt-3">
-          <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
-            최종 순위
-          </h3>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              최종 순위
+            </h3>
+            <Button variant="ghost" size="sm" onClick={copyResult}>
+              <Copy className="mr-1 h-3.5 w-3.5" /> 복사
+            </Button>
+          </div>
           <ol className="overflow-hidden rounded-lg border">
             {finalStandings.map((s) => (
               <li

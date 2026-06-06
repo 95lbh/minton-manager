@@ -48,14 +48,25 @@ export default async function TournamentGamesPage({
         {tournament.structure === "team_split" ? (
           <TeamGamesManager
             tournamentId={tournament.id}
+            tournamentName={tournament.name}
             matches={matches}
             gamesPerPlayer={tournament.games_per_player}
             locked={locked}
           />
         ) : tournament.structure === "league" ? (
-          <LeagueManager tournamentId={tournament.id} matches={matches} locked={locked} />
+          <LeagueManager
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            matches={matches}
+            locked={locked}
+          />
         ) : tournament.structure === "tournament" ? (
-          <TournamentManager tournamentId={tournament.id} matches={matches} locked={locked} />
+          <TournamentManager
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            matches={matches}
+            locked={locked}
+          />
         ) : (
           <p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             먼저 대회 형식을 선택하세요.

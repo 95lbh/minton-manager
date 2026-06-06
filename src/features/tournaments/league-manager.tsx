@@ -2,10 +2,11 @@
 
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Network } from "lucide-react";
+import { Network, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { generateLeague, setMatchResult } from "@/server/mutations/tournaments";
+import { copyStandings } from "@/features/tournaments/share";
 import type { MatchView } from "@/server/queries/tournaments";
 
 function names(side: { id: string; name: string }[]) {
@@ -84,10 +85,12 @@ function MatchRow({
 
 export function LeagueManager({
   tournamentId,
+  tournamentName,
   matches,
   locked = false,
 }: {
   tournamentId: string;
+  tournamentName: string;
   matches: MatchView[];
   locked?: boolean;
 }) {
@@ -161,6 +164,15 @@ export function LeagueManager({
     });
   };
 
+  const copyResult = () =>
+    copyStandings(
+      `[${tournamentName}] 리그 순위`,
+      standings.map(
+        (r, i) =>
+          `${i + 1}. ${r.label} (${r.wins}승 ${r.losses}패, 득실 ${r.pf - r.pa > 0 ? "+" : ""}${r.pf - r.pa})`,
+      ),
+    );
+
   return (
     <section className="rounded-lg border bg-card p-5">
       <div className="flex items-center justify-between gap-3">
@@ -177,9 +189,14 @@ export function LeagueManager({
 
       {standings.length > 0 && (
         <div className="mt-4">
-          <h3 className="mb-1.5 text-xs font-semibold text-muted-foreground">
-            순위 <span className="font-normal">(승 → 직접전 → 득실)</span>
-          </h3>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              순위 <span className="font-normal">(승 → 직접전 → 득실)</span>
+            </h3>
+            <Button variant="ghost" size="sm" onClick={copyResult}>
+              <Copy className="mr-1 h-3.5 w-3.5" /> 복사
+            </Button>
+          </div>
           <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
