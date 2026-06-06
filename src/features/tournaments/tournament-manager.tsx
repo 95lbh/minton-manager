@@ -280,7 +280,13 @@ export function TournamentManager({
       )}
 
       {rounds.length > 0 && (
-        <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+        <div className="mt-4">
+          {rounds.length > 1 && (
+            <p className="mb-1 text-xs text-muted-foreground sm:hidden">
+              ← 좌우로 넘겨서 라운드 보기 →
+            </p>
+          )}
+          <div className="flex gap-4 overflow-x-auto pb-2">
           {rounds.map(({ r, matches: ms }) => (
             <div key={r} className="flex min-w-[220px] flex-1 flex-col">
               <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
@@ -293,6 +299,7 @@ export function TournamentManager({
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
 

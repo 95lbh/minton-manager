@@ -55,27 +55,29 @@ function MatchRow({
       <span className={`min-w-0 flex-1 truncate ${aWon ? "font-semibold" : ""}`}>
         {names(match.blue)}
       </span>
-      <Input
-        type="number"
-        min={0}
-        value={a}
-        onChange={(e) => setA(e.target.value)}
-        onBlur={save}
-        disabled={disabled}
-        className="h-8 w-14 text-center"
-        aria-label="왼쪽 점수"
-      />
-      <span className="text-xs text-muted-foreground">:</span>
-      <Input
-        type="number"
-        min={0}
-        value={b}
-        onChange={(e) => setB(e.target.value)}
-        onBlur={save}
-        disabled={disabled}
-        className="h-8 w-14 text-center"
-        aria-label="오른쪽 점수"
-      />
+      <span className="flex shrink-0 items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          value={a}
+          onChange={(e) => setA(e.target.value)}
+          onBlur={save}
+          disabled={disabled}
+          className="h-8 w-14 text-center"
+          aria-label="왼쪽 점수"
+        />
+        <span className="text-xs text-muted-foreground">:</span>
+        <Input
+          type="number"
+          min={0}
+          value={b}
+          onChange={(e) => setB(e.target.value)}
+          onBlur={save}
+          disabled={disabled}
+          className="h-8 w-14 text-center"
+          aria-label="오른쪽 점수"
+        />
+      </span>
       <span className={`min-w-0 flex-1 truncate text-right ${bWon ? "font-semibold" : ""}`}>
         {names(match.white)}
       </span>
@@ -197,7 +199,7 @@ export function LeagueManager({
               <Copy className="mr-1 h-3.5 w-3.5" /> 복사
             </Button>
           </div>
-          <div className="overflow-hidden rounded-lg border">
+          <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>

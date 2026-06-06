@@ -44,27 +44,29 @@ function MatchRow({
         <span className="rounded bg-sky-100 px-1 text-sky-800">{TEAM_LABEL.blue}</span>{" "}
         {match.blue.map((p) => p.name).join(" · ") || "-"}
       </span>
-      <Input
-        type="number"
-        min={0}
-        value={b}
-        onChange={(e) => setB(e.target.value)}
-        onBlur={save}
-        disabled={disabled}
-        className="h-8 w-14 text-center"
-        aria-label="청팀 점수"
-      />
-      <span className="text-xs text-muted-foreground">:</span>
-      <Input
-        type="number"
-        min={0}
-        value={w}
-        onChange={(e) => setW(e.target.value)}
-        onBlur={save}
-        disabled={disabled}
-        className="h-8 w-14 text-center"
-        aria-label="백팀 점수"
-      />
+      <span className="flex shrink-0 items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          value={b}
+          onChange={(e) => setB(e.target.value)}
+          onBlur={save}
+          disabled={disabled}
+          className="h-8 w-14 text-center"
+          aria-label="청팀 점수"
+        />
+        <span className="text-xs text-muted-foreground">:</span>
+        <Input
+          type="number"
+          min={0}
+          value={w}
+          onChange={(e) => setW(e.target.value)}
+          onBlur={save}
+          disabled={disabled}
+          className="h-8 w-14 text-center"
+          aria-label="백팀 점수"
+        />
+      </span>
       <span className={`min-w-0 flex-1 truncate text-right ${whiteWon ? "font-semibold" : ""}`}>
         {match.white.map((p) => p.name).join(" · ") || "-"}{" "}
         <span className="rounded bg-rose-100 px-1 text-rose-800">{TEAM_LABEL.white}</span>
@@ -238,7 +240,7 @@ export function TeamGamesManager({
                   <Copy className="mr-1 h-3.5 w-3.5" /> 결과 복사
                 </Button>
               </div>
-              <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
