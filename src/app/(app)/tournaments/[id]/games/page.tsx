@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { getTournament, getMatches } from "@/server/queries/tournaments";
+import { getTournament, getMatches, getParticipants } from "@/server/queries/tournaments";
 import { TeamGamesManager } from "@/features/tournaments/team-games-manager";
 import { LeagueManager } from "@/features/tournaments/league-manager";
 import { TournamentManager } from "@/features/tournaments/tournament-manager";
@@ -22,6 +22,9 @@ export default async function TournamentGamesPage({
 
   const hasGames = tournament.structure !== null;
   const matches = hasGames ? await getMatches(id) : [];
+  // 토너먼트 직접 대진 짜기에 참가자 목록 필요.
+  const participants =
+    tournament.structure === "tournament" ? await getParticipants(id) : [];
   const locked = tournament.status === "finished";
 
   return (
@@ -64,6 +67,8 @@ export default async function TournamentGamesPage({
           <TournamentManager
             tournamentId={tournament.id}
             tournamentName={tournament.name}
+            participants={participants}
+            isDoubles={tournament.match_type !== "singles"}
             matches={matches}
             locked={locked}
           />

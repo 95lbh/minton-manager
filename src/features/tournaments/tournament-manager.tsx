@@ -14,12 +14,15 @@ import {
 } from "@/components/ui/select";
 import {
   generateTournamentRound1,
+  generateTournamentManual,
   generateNextRound,
   setMatchResult,
 } from "@/server/mutations/tournaments";
 import { warnExcluded } from "@/features/tournaments/league-manager";
 import { copyStandings } from "@/features/tournaments/share";
+import { BracketBuilder } from "@/features/tournaments/bracket-builder";
 import type { MatchView } from "@/server/queries/tournaments";
+import type { TournamentParticipant } from "@/types/db";
 
 const names = (side: { id: string; name: string }[]) =>
   side.map((p) => p.name).join(" · ");
@@ -30,11 +33,10 @@ function roundLabel(count: number) {
   return `${count * 2}강`;
 }
 
-type Seeding = "skill" | "random" | "manual";
+type Seeding = "skill" | "random";
 const SEEDING_LABEL: Record<Seeding, string> = {
   skill: "실력순",
   random: "랜덤",
-  manual: "수동(시드)",
 };
 
 /** 부전승(한쪽 없음)이거나 점수가 입력되어 승부가 갈렸는가 */
@@ -111,16 +113,21 @@ function MatchCard({
 export function TournamentManager({
   tournamentId,
   tournamentName,
+  participants,
+  isDoubles,
   matches,
   locked = false,
 }: {
   tournamentId: string;
   tournamentName: string;
+  participants: TournamentParticipant[];
+  isDoubles: boolean;
   matches: MatchView[];
   locked?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [seeding, setSeeding] = useState<Seeding>("skill");
+  const [manualMode, setManualMode] = useState(false);
   // 점수 입력 즉시 반영(낙관적). 우승자·다음 라운드 가능 여부도 함께 갱신.
   const [optMatches, applyScore] = useOptimistic(
     matches,
@@ -247,15 +254,14 @@ export function TournamentManager({
             배치 방식을 고른 뒤 대진을 생성하세요. 복식은 실력 균형 페어로 자동 구성됩니다.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Select value={seeding} onValueChange={(v) => setSeeding((v as Seeding) ?? "skill")}>
-            <SelectTrigger className="h-9 w-28">
+            <SelectTrigger className="h-9 w-24">
               <SelectValue>{SEEDING_LABEL[seeding]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="skill">실력순</SelectItem>
               <SelectItem value="random">랜덤</SelectItem>
-              <SelectItem value="manual">수동(시드)</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -265,14 +271,31 @@ export function TournamentManager({
             }}
             disabled={pending || locked}
           >
-            <GitFork className="mr-1 h-4 w-4" /> 대진 생성
+            <GitFork className="mr-1 h-4 w-4" /> 자동 생성
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (matches.length > 0 && !confirm("직접 짜기로 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?")) return;
+              setManualMode(true);
+            }}
+            disabled={pending || locked}
+          >
+            직접 짜기
           </Button>
         </div>
       </div>
-      {seeding === "manual" && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          수동 배치는 참가자 페이지의 ‘시드 순서’를 따릅니다. (시드 미설정 시 입력 순서)
-        </p>
+      {manualMode && (
+        <BracketBuilder
+          participants={participants}
+          isDoubles={isDoubles}
+          pending={pending}
+          onCancel={() => setManualMode(false)}
+          onGenerate={(ids) => {
+            setManualMode(false);
+            run(() => generateTournamentManual(tournamentId, ids), "대진을 생성했습니다.");
+          }}
+        />
       )}
 
       {champion && (

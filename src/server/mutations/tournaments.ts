@@ -215,6 +215,90 @@ export async function generateTournamentRound1(
   return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
 }
 
+/**
+ * 직접 배치 대진 생성. orderedIds 순서대로 유닛(단식=1명, 복식=2명)을 묶고,
+ * 인접한 유닛끼리 1라운드 대진(슬롯1 vs 슬롯2, 슬롯3 vs 슬롯4 …).
+ * 표준 시드 분산을 쓰지 않고 사용자가 짠 순서 그대로 대진을 만든다.
+ */
+export async function generateTournamentManual(
+  tournamentId: string,
+  orderedIds: string[],
+): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
+  const club = await getActiveClub();
+  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const supabase = await createClient();
+
+  const { data: t } = await supabase
+    .from("tournaments")
+    .select("match_type")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  const isDoubles = (t?.match_type as string) !== "singles";
+  const perTeam = isDoubles ? 2 : 1;
+
+  const { data: parts } = await supabase
+    .from("tournament_participants")
+    .select("id, name")
+    .eq("tournament_id", tournamentId);
+  const nameOf = new Map((parts ?? []).map((p) => [p.id as string, p.name as string]));
+  const valid = new Set((parts ?? []).map((p) => p.id as string));
+  const ids = orderedIds.filter((id) => valid.has(id));
+
+  // 유닛 청크: 단식=1명, 복식=2명. 복식에서 짝 안 맞는 잔여 1명은 제외.
+  const units: string[][] = [];
+  for (let i = 0; i + perTeam <= ids.length; i += perTeam) {
+    units.push(ids.slice(i, i + perTeam));
+  }
+  const leftover = ids.slice(units.length * perTeam);
+  const excludedNames = leftover.map((id) => nameOf.get(id) ?? "참가자");
+
+  if (units.length < 2) {
+    return {
+      ok: false,
+      error: { message: isDoubles ? "최소 2팀(4명)을 배치하세요." : "최소 2명을 배치하세요." },
+    };
+  }
+
+  await supabase.from("tournament_matches").delete().eq("tournament_id", tournamentId);
+
+  const matchCount = Math.ceil(units.length / 2);
+  const { data: inserted, error: mErr } = await supabase
+    .from("tournament_matches")
+    .insert(
+      Array.from({ length: matchCount }, (_, i) => ({
+        club_id: club.id,
+        tournament_id: tournamentId,
+        round: 1,
+        order_no: i + 1,
+      })),
+    )
+    .select("id, order_no");
+  if (mErr || !inserted) {
+    return { ok: false, error: { message: "대진 생성에 실패했습니다.", detail: mErr?.message } };
+  }
+  const ordered = [...inserted].sort((a, b) => (a.order_no as number) - (b.order_no as number));
+
+  const sides: { club_id: string; match_id: string; team: TournamentTeam; participant_id: string }[] = [];
+  for (let k = 0; k < matchCount; k++) {
+    const matchId = ordered[k].id as string;
+    units[2 * k]?.forEach((pid) =>
+      sides.push({ club_id: club.id, match_id: matchId, team: "blue", participant_id: pid }),
+    );
+    units[2 * k + 1]?.forEach((pid) =>
+      sides.push({ club_id: club.id, match_id: matchId, team: "white", participant_id: pid }),
+    );
+  }
+
+  const { error: sErr } = await supabase.from("tournament_match_sides").insert(sides);
+  if (sErr) {
+    return { ok: false, error: { message: "대진 저장에 실패했습니다.", detail: sErr.message } };
+  }
+
+  revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
+  return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
+}
+
 /** 토너먼트 다음 라운드 생성: 현재 마지막 라운드 승자끼리 대진. */
 export async function generateNextRound(
   tournamentId: string,
