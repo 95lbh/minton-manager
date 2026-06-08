@@ -15,7 +15,14 @@ import {
   removeParticipant,
 } from "@/server/mutations/tournaments";
 import { SKILL_VALUE, GRADE_BY_VALUE, GENDER_LABEL } from "@/lib/constants";
-import type { ClubMember, TournamentParticipant } from "@/types/db";
+import type { ClubMember, MemberGender, TournamentParticipant } from "@/types/db";
+
+/** 성별 카드 테두리: 남=하늘, 여=장미, 그 외=기본. */
+function genderBorder(gender: MemberGender | null): string {
+  if (gender === "male") return "border-sky-400";
+  if (gender === "female") return "border-rose-400";
+  return "";
+}
 
 export function ParticipantsManager({
   tournamentId,
@@ -96,7 +103,7 @@ export function ParticipantsManager({
             {participants.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+                className={`flex items-center justify-between gap-2 rounded-lg border-2 bg-card px-3 py-2 ${genderBorder(p.gender)}`}
               >
                 <span className="truncate text-sm">
                   {p.name}

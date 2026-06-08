@@ -6,6 +6,13 @@ import { GitFork, Trophy, ChevronRight, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   generateTournamentRound1,
   generateNextRound,
   setMatchResult,
@@ -22,6 +29,13 @@ function roundLabel(count: number) {
   if (count === 2) return "준결승";
   return `${count * 2}강`;
 }
+
+type Seeding = "skill" | "random" | "manual";
+const SEEDING_LABEL: Record<Seeding, string> = {
+  skill: "실력순",
+  random: "랜덤",
+  manual: "수동(시드)",
+};
 
 /** 부전승(한쪽 없음)이거나 점수가 입력되어 승부가 갈렸는가 */
 function isDecided(m: MatchView) {
@@ -77,7 +91,7 @@ function MatchCard({
           onChange={(e) => setScore(e.target.value)}
           onBlur={save}
           disabled={disabled}
-          className="h-7 w-12 text-center"
+          className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           aria-label={`${side === "blue" ? "위" : "아래"} 점수`}
         />
       )}
@@ -106,6 +120,7 @@ export function TournamentManager({
   locked?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [seeding, setSeeding] = useState<Seeding>("skill");
   // 점수 입력 즉시 반영(낙관적). 우승자·다음 라운드 가능 여부도 함께 갱신.
   const [optMatches, applyScore] = useOptimistic(
     matches,
@@ -225,23 +240,40 @@ export function TournamentManager({
 
   return (
     <section className="rounded-lg border bg-card p-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">토너먼트 대진 / 결과</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            실력 시드로 배치합니다. 복식은 실력 균형 페어로 자동 구성됩니다.
+            배치 방식을 고른 뒤 대진을 생성하세요. 복식은 실력 균형 페어로 자동 구성됩니다.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?")) return;
-            run(() => generateTournamentRound1(tournamentId), "대진을 생성했습니다.");
-          }}
-          disabled={pending || locked}
-        >
-          <GitFork className="mr-1 h-4 w-4" /> 대진 생성
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Select value={seeding} onValueChange={(v) => setSeeding((v as Seeding) ?? "skill")}>
+            <SelectTrigger className="h-9 w-28">
+              <SelectValue>{SEEDING_LABEL[seeding]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="skill">실력순</SelectItem>
+              <SelectItem value="random">랜덤</SelectItem>
+              <SelectItem value="manual">수동(시드)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => {
+              if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?")) return;
+              run(() => generateTournamentRound1(tournamentId, seeding), "대진을 생성했습니다.");
+            }}
+            disabled={pending || locked}
+          >
+            <GitFork className="mr-1 h-4 w-4" /> 대진 생성
+          </Button>
+        </div>
       </div>
+      {seeding === "manual" && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          수동 배치는 참가자 페이지의 ‘시드 순서’를 따릅니다. (시드 미설정 시 입력 순서)
+        </p>
+      )}
 
       {champion && (
         <div className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">

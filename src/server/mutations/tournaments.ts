@@ -130,6 +130,7 @@ export async function generateLeague(
  */
 export async function generateTournamentRound1(
   tournamentId: string,
+  seeding: "skill" | "random" | "manual" = "skill",
 ): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
@@ -154,7 +155,6 @@ export async function generateTournamentRound1(
   const nameOf = new Map(parts.map((p) => [p.id as string, p.name as string]));
   const levelOf = new Map(parts.map((p) => [p.id as string, (p.level as number | null) ?? DEFAULT_LEVEL]));
   const seedOf = new Map(parts.map((p) => [p.id as string, p.seed as number | null]));
-  const hasManualSeed = parts.some((p) => p.seed != null);
   // 수동 시드값(없으면 Infinity → 뒤로). 유닛 시드 = 멤버 시드 합.
   const unitSeed = (ids: string[]) =>
     ids.reduce((s, id) => s + (seedOf.get(id) ?? Number.MAX_SAFE_INTEGER), 0);
@@ -175,9 +175,14 @@ export async function generateTournamentRound1(
     return { ok: false, error: { message: "토너먼트는 2팀(명) 이상이어야 합니다." } };
   }
 
-  // 수동 시드가 있으면 시드 순, 없으면 실력 순으로 시드 부여
-  if (hasManualSeed) {
+  // 배치 방식: manual=시드 순(시드 편집기), random=무작위, skill=실력 순(기본)
+  if (seeding === "manual") {
     units.sort((a, b) => unitSeed(a.ids) - unitSeed(b.ids) || b.skill - a.skill || (a.ids[0] < b.ids[0] ? -1 : 1));
+  } else if (seeding === "random") {
+    for (let i = units.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [units[i], units[j]] = [units[j], units[i]];
+    }
   } else {
     units.sort((a, b) => b.skill - a.skill || (a.ids[0] < b.ids[0] ? -1 : 1));
   }
