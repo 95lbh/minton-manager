@@ -35,6 +35,13 @@ export const metadata: Metadata = {
     icon: "/icon-192.png",
     apple: "/apple-touch-icon.png",
   },
+  // 검색엔진 소유 확인(구글 서치콘솔 · 네이버 서치어드바이저) — HTML 태그 방식.
+  verification: {
+    google: "oVAVMsxD-3WfiUzYABlmzHEa3HQuqJYDGKCiRICpcro",
+    other: {
+      "naver-site-verification": "8102e58a3474262b02359af13cc233f085bcf97c",
+    },
+  },
   // 링크 미리보기(카카오톡/슬랙/트위터 등). og:image는 opengraph-image.tsx가 자동 생성.
   openGraph: {
     type: "website",
