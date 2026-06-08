@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,18 @@ function genderBorder(gender: MemberGender | null): string {
   return "";
 }
 
+// 낙관적 참가자 목록 갱신(서버 응답 전 즉시 반영, 이후 revalidate로 동기화).
+type PAction =
+  | { type: "add"; participant: TournamentParticipant }
+  | { type: "remove"; id: string };
+function reducer(
+  state: TournamentParticipant[],
+  action: PAction,
+): TournamentParticipant[] {
+  if (action.type === "add") return [...state, action.participant];
+  return state.filter((p) => p.id !== action.id);
+}
+
 export function ParticipantsManager({
   tournamentId,
   participants,
@@ -35,17 +46,17 @@ export function ParticipantsManager({
   members: ClubMember[];
   locked?: boolean;
 }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const [pending, startTransition] = useTransition();
+  const [optParticipants, apply] = useOptimistic(participants, reducer);
   const disabled = pending || locked;
 
   const registeredMemberIds = useMemo(
-    () => new Set(participants.filter((p) => p.member_id).map((p) => p.member_id)),
-    [participants],
+    () => new Set(optParticipants.filter((p) => p.member_id).map((p) => p.member_id)),
+    [optParticipants],
   );
 
   const candidates = useMemo(() => {
@@ -55,36 +66,70 @@ export function ParticipantsManager({
       .filter((m) => (q ? m.name.toLowerCase().includes(q) : true));
   }, [members, registeredMemberIds, query]);
 
-  const run = (fn: () => Promise<{ ok: boolean; error?: { message: string } }>, msg: string) => {
+  // 회원에서 추가 — 낙관적으로 즉시 카드 추가(출석 체크인처럼 빠르게).
+  const addMember = (m: ClubMember) => {
     startTransition(async () => {
-      const res = await fn();
-      if (res.ok) {
-        if (msg) toast.success(msg);
-        router.refresh();
-      } else {
-        toast.error(res.error?.message ?? "오류가 발생했습니다.");
-      }
+      apply({
+        type: "add",
+        participant: {
+          id: `temp-${m.id}`,
+          club_id: "",
+          tournament_id: tournamentId,
+          member_id: m.id,
+          name: m.name,
+          gender: m.gender,
+          level: m.level,
+          team: null,
+          seed: null,
+          created_at: new Date().toISOString(),
+        },
+      });
+      const res = await addParticipantsFromMembers(tournamentId, [
+        { id: m.id, name: m.name, gender: m.gender, level: m.level },
+      ]);
+      if (!res.ok) toast.error(res.error.message);
     });
   };
 
   const submitGuest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName.trim()) {
+    const name = guestName.trim();
+    if (!name) {
       toast.error("참가자 이름을 입력하세요.");
       return;
     }
-    run(
-      () =>
-        addGuestParticipant(tournamentId, {
-          name: guestName,
-          gender: guestGender === "none" ? null : guestGender,
-          level: guestLevel === "none" ? null : SKILL_VALUE[guestLevel],
-        }),
-      "참가자를 추가했습니다.",
-    );
+    const gender = guestGender === "none" ? null : guestGender;
+    const level = guestLevel === "none" ? null : SKILL_VALUE[guestLevel];
     setGuestName("");
     setGuestGender("none");
     setGuestLevel("none");
+    startTransition(async () => {
+      apply({
+        type: "add",
+        participant: {
+          id: `temp-guest-${Date.now()}`,
+          club_id: "",
+          tournament_id: tournamentId,
+          member_id: null,
+          name,
+          gender,
+          level,
+          team: null,
+          seed: null,
+          created_at: new Date().toISOString(),
+        },
+      });
+      const res = await addGuestParticipant(tournamentId, { name, gender, level });
+      if (!res.ok) toast.error(res.error.message);
+    });
+  };
+
+  const removeP = (id: string) => {
+    startTransition(async () => {
+      apply({ type: "remove", id });
+      const res = await removeParticipant(id, tournamentId);
+      if (!res.ok) toast.error(res.error.message);
+    });
   };
 
   return (
@@ -92,15 +137,15 @@ export function ParticipantsManager({
       {/* 등록된 참가자 */}
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-          참가자 ({participants.length})
+          참가자 ({optParticipants.length})
         </h2>
-        {participants.length === 0 ? (
+        {optParticipants.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             아직 참가자가 없습니다. 오른쪽에서 추가하세요.
           </p>
         ) : (
           <ul className="space-y-1">
-            {participants.map((p) => (
+            {optParticipants.map((p) => (
               <li
                 key={p.id}
                 className={`flex items-center justify-between gap-2 rounded-lg border-2 bg-card px-3 py-2 ${genderBorder(p.gender)}`}
@@ -116,8 +161,8 @@ export function ParticipantsManager({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => run(() => removeParticipant(p.id, tournamentId), "")}
-                  disabled={disabled}
+                  onClick={() => removeP(p.id)}
+                  disabled={locked}
                   aria-label="참가자 제거"
                 >
                   <X className="h-4 w-4" />
@@ -156,16 +201,8 @@ export function ParticipantsManager({
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() =>
-                      run(
-                        () =>
-                          addParticipantsFromMembers(tournamentId, [
-                            { id: m.id, name: m.name, gender: m.gender, level: m.level },
-                          ]),
-                        `${m.name} 추가`,
-                      )
-                    }
-                    disabled={disabled}
+                    onClick={() => addMember(m)}
+                    disabled={locked}
                   >
                     <UserPlus className="mr-1 h-4 w-4" /> {m.name}
                   </Button>
