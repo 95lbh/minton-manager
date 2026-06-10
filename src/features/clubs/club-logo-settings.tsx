@@ -196,7 +196,7 @@ export function ClubLogoSettings({
         {/* 헤더에서 어떻게 보이는지 */}
         <div className="relative flex min-h-28 flex-1 items-center justify-center rounded-lg border bg-background px-4 pb-3 pt-7">
           <span className="absolute right-3 top-2 text-[11px] text-muted-foreground">
-            헤더에서는 이렇게 보여요
+            미리 보기
           </span>
           <div className="flex items-center gap-2.5 rounded-md text-2xl font-bold">
             {shownUrl && (
