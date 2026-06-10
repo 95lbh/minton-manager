@@ -158,6 +158,7 @@ export function AttendanceManager({
                 const gender = r.is_guest ? r.guest_gender : r.member?.gender;
                 const level = r.is_guest ? r.guest_level : r.member?.level;
                 const grade = level ? GRADE_BY_VALUE[level] : null;
+                const birthYear = r.is_guest ? null : r.member?.birth_year;
                 return (
                   <li
                     key={r.id}
@@ -181,6 +182,7 @@ export function AttendanceManager({
                         <p className="truncate text-[11px] leading-tight text-muted-foreground">
                           {gender ? GENDER_LABEL[gender] : ""}
                           {grade ? ` · ${grade}` : ""}
+                          {birthYear ? ` · ${birthYear}` : ""}
                         </p>
                       </div>
                     </div>
@@ -255,6 +257,7 @@ export function AttendanceManager({
                             name: m.name,
                             gender: m.gender,
                             level: m.level,
+                            birth_year: m.birth_year,
                           },
                         },
                       })
@@ -270,6 +273,7 @@ export function AttendanceManager({
                     <span className="ml-auto text-xs text-muted-foreground">
                       {m.gender ? GENDER_LABEL[m.gender] : ""}
                       {m.level ? ` · ${GRADE_BY_VALUE[m.level]}` : ""}
+                      {m.birth_year ? ` · ${m.birth_year}` : ""}
                     </span>
                   </button>
                 </li>

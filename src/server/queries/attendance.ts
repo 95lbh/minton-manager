@@ -9,6 +9,7 @@ export interface AttendanceRecordView extends AttendanceRecord {
     name: string;
     gender: MemberGender | null;
     level: number | null;
+    birth_year: number | null;
   } | null;
 }
 
@@ -58,7 +59,7 @@ export async function getAttendanceRecords(
   const { data, error } = await supabase
     .from("attendance_records")
     .select(
-      "*, member:club_members(id, name, gender, level)",
+      "*, member:club_members(id, name, gender, level, birth_year)",
     )
     .eq("session_id", sessionId)
     .order("checked_in_at", { ascending: true });

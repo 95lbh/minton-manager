@@ -38,9 +38,10 @@ interface FormState {
   name: string;
   gender: GenderValue;
   level: GradeValue; // 등급 문자(S~F) 또는 "none"
+  birthYear: string; // 출생년도(4자리) 또는 ""
 }
 
-const EMPTY: FormState = { name: "", gender: "none", level: "none" };
+const EMPTY: FormState = { name: "", gender: "none", level: "none", birthYear: "" };
 
 export function MembersManager({ members }: { members: ClubMember[] }) {
   const [open, setOpen] = useState(false);
@@ -59,6 +60,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       name: m.name,
       gender: (m.gender as GenderValue) ?? "none",
       level: m.level ? GRADE_BY_VALUE[m.level] : "none",
+      birthYear: m.birth_year ? String(m.birth_year) : "",
     });
     setOpen(true);
   };
@@ -76,6 +78,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
       "level",
       form.level === "none" ? "" : String(SKILL_VALUE[form.level]),
     );
+    fd.set("birthYear", form.birthYear.trim());
 
     startTransition(async () => {
       const res = form.id ? await updateMember(fd) : await createMember(fd);
@@ -118,6 +121,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
               <TableHead>이름</TableHead>
               <TableHead className="w-16">성별</TableHead>
               <TableHead className="w-16">등급</TableHead>
+              <TableHead className="w-20">출생년도</TableHead>
               <TableHead className="w-28 text-right">관리</TableHead>
             </TableRow>
           </TableHeader>
@@ -125,7 +129,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
             {members.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={5}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   아직 회원이 없습니다. “회원 추가”로 시작하세요.
@@ -146,6 +150,9 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                 </TableCell>
                 <TableCell>{m.gender ? GENDER_LABEL[m.gender] : "-"}</TableCell>
                 <TableCell>{m.level ? GRADE_BY_VALUE[m.level] : "-"}</TableCell>
+                <TableCell className="tabular-nums text-muted-foreground">
+                  {m.birth_year ?? "-"}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
@@ -203,6 +210,21 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
               <GradeToggle
                 value={form.level}
                 onChange={(v) => setForm({ ...form, level: v })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="m-birth">출생년도</Label>
+              <Input
+                id="m-birth"
+                type="number"
+                inputMode="numeric"
+                placeholder="예: 1998"
+                value={form.birthYear}
+                onChange={(e) =>
+                  setForm({ ...form, birthYear: e.target.value.slice(0, 4) })
+                }
+                min={1900}
+                max={2100}
               />
             </div>
           </div>

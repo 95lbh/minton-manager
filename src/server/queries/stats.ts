@@ -8,6 +8,7 @@ export interface MemberStatRow {
   name: string;
   gender: MemberGender | null;
   level: number | null;
+  birthYear: number | null;
   attendCount: number;
   gameCount: number;
   lastPlayedAt: string | null;
@@ -31,7 +32,7 @@ export async function getMemberStats(clubId: string): Promise<MemberStatRow[]> {
   const [membersRes, statsRes] = await Promise.all([
     supabase
       .from("club_members")
-      .select("id, name, gender, level")
+      .select("id, name, gender, level, birth_year")
       .eq("club_id", clubId)
       .is("deleted_at", null),
     supabase
@@ -52,6 +53,7 @@ export async function getMemberStats(clubId: string): Promise<MemberStatRow[]> {
       name: m.name,
       gender: m.gender,
       level: m.level,
+      birthYear: m.birth_year ?? null,
       attendCount: s?.attend_cnt ?? 0,
       gameCount: s?.game_cnt ?? 0,
       lastPlayedAt: s?.last_played_at ?? null,

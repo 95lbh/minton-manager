@@ -49,6 +49,7 @@ export async function exportMembers(): Promise<
       name: m.name,
       gender: m.gender,
       level: m.level,
+      birthYear: m.birth_year,
       phone: m.phone,
     })),
   };
@@ -76,10 +77,14 @@ function normalizeRows(input: unknown): MemberExportRow[] {
     const lv = typeof r.level === "number" ? r.level : Number(r.level);
     if (Number.isFinite(lv) && lv >= 1 && lv <= 7) level = Math.floor(lv);
 
+    let birthYear: number | null = null;
+    const by = typeof r.birthYear === "number" ? r.birthYear : Number(r.birthYear);
+    if (Number.isFinite(by) && by >= 1900 && by <= 2100) birthYear = Math.floor(by);
+
     const phone =
       typeof r.phone === "string" && r.phone.trim() ? r.phone.trim().slice(0, 50) : null;
 
-    rows.push({ name: name.slice(0, 100), gender, level, phone });
+    rows.push({ name: name.slice(0, 100), gender, level, birthYear, phone });
   }
   return rows;
 }
@@ -152,6 +157,7 @@ export async function importMembers(
         name: r.name,
         gender: r.gender,
         level: r.level,
+        birth_year: r.birthYear,
         phone: r.phone,
       })),
     )

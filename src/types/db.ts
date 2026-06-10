@@ -39,6 +39,7 @@ export interface ClubMember {
   name: string;
   gender: MemberGender | null;
   level: number | null;
+  birth_year: number | null;
   phone: string | null;
   status: string;
   created_by: string | null;

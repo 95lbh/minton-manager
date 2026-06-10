@@ -67,6 +67,27 @@ export default async function StatsPage() {
   ];
   const levelMax = Math.max(1, ...levelRows.map((l) => l.count));
 
+  // ── 나이대 분포 (만 나이 근사 = 올해 - 출생년도) ──
+  const currentYear = new Date().getFullYear();
+  const AGE_BANDS = ["10대", "20대", "30대", "40대", "50대 이상"] as const;
+  const ageMap = new Map<string, number>();
+  let ageUnknown = 0;
+  for (const r of rows) {
+    if (!r.birthYear) {
+      ageUnknown++;
+      continue;
+    }
+    const age = currentYear - r.birthYear;
+    const band =
+      age < 20 ? "10대" : age >= 50 ? "50대 이상" : `${Math.floor(age / 10) * 10}대`;
+    ageMap.set(band, (ageMap.get(band) ?? 0) + 1);
+  }
+  const ageRows = [
+    ...AGE_BANDS.map((band) => ({ label: band, count: ageMap.get(band) ?? 0 })),
+    ...(ageUnknown ? [{ label: "미지정", count: ageUnknown }] : []),
+  ];
+  const ageMax = Math.max(1, ...ageRows.map((a) => a.count));
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
@@ -164,6 +185,36 @@ export default async function StatsPage() {
               ))}
             </ul>
           </div>
+        </div>
+      )}
+
+      {/* 나이대 분포 */}
+      {total > 0 && (
+        <div className="mt-3 rounded-xl border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold tracking-tight">나이대 분포</h2>
+            <span className="text-xs text-muted-foreground">
+              {currentYear}년 기준
+            </span>
+          </div>
+          <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {ageRows.map((a) => (
+              <li key={a.label} className="flex items-center gap-2 text-sm">
+                <span className="w-14 shrink-0 text-xs font-bold text-muted-foreground">
+                  {a.label}
+                </span>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${(a.count / ageMax) * 100}%` }}
+                  />
+                </div>
+                <span className="w-8 shrink-0 text-right tabular-nums text-muted-foreground">
+                  {a.count}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

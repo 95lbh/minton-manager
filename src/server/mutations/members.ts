@@ -17,6 +17,13 @@ function parseLevel(v: FormDataEntryValue | null): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 7 ? n : null;
 }
 
+function parseBirthYear(v: FormDataEntryValue | null): number | null {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null;
+}
+
 /** 회원 등록. */
 export async function createMember(formData: FormData): Promise<ActionResult> {
   const name = String(formData.get("name") ?? "").trim();
@@ -31,6 +38,7 @@ export async function createMember(formData: FormData): Promise<ActionResult> {
     name,
     gender: parseGender(formData.get("gender")),
     level: parseLevel(formData.get("level")),
+    birth_year: parseBirthYear(formData.get("birthYear")),
   });
 
   if (error)
@@ -54,6 +62,7 @@ export async function updateMember(formData: FormData): Promise<ActionResult> {
       name,
       gender: parseGender(formData.get("gender")),
       level: parseLevel(formData.get("level")),
+      birth_year: parseBirthYear(formData.get("birthYear")),
     })
     .eq("id", id);
 

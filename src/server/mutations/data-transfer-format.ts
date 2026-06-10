@@ -12,6 +12,7 @@ export interface MemberExportRow {
   name: string;
   gender: MemberGender | null;
   level: number | null;
+  birthYear: number | null;
   phone: string | null;
 }
 
