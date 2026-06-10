@@ -27,13 +27,15 @@ export function AppShell({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <ClubSwitcher clubs={clubs} activeClub={activeClub} />
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {userEmail}
-            </span>
+            {!isGuest && (
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                {userEmail}
+              </span>
+            )}
             <FullscreenToggle />
             <form action={signOut}>
               <Button type="submit" variant="outline" size="sm">
-                로그아웃
+                {isGuest ? "나가기" : "로그아웃"}
               </Button>
             </form>
           </div>
