@@ -3,6 +3,7 @@ import { getActiveClub } from "@/server/queries/clubs";
 import { getMemberStats, getClubSummary } from "@/server/queries/stats";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_GRADES } from "@/lib/constants";
 import { PersonAvatar } from "@/components/person-avatar";
+import { StatsShare } from "@/features/stats/stats-share";
 import {
   Table,
   TableBody,
@@ -68,7 +69,10 @@ export default async function StatsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">통계</h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">통계</h1>
+        <StatsShare clubName={club.name} summary={summary} rows={rows} />
+      </div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <span>{club.name}</span>
         <span className="size-1 rounded-full bg-muted-foreground/40" />
