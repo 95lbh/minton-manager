@@ -86,7 +86,7 @@ export function ClubSwitcher({
             <img
               src={activeClub.logo_url}
               alt=""
-              className="size-7 shrink-0 rounded-md object-cover"
+              className="h-7 w-auto max-w-[120px] shrink-0 rounded-md object-contain"
             />
           )}
           <span className="truncate">{activeClub.name}</span>
@@ -105,7 +105,7 @@ export function ClubSwitcher({
                   <img
                     src={club.logo_url}
                     alt=""
-                    className="size-5 shrink-0 rounded object-cover"
+                    className="h-5 w-auto max-w-[72px] shrink-0 rounded object-contain"
                   />
                 ) : (
                   <span className="size-5 shrink-0 rounded bg-muted" />
