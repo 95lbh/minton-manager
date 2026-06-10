@@ -194,17 +194,17 @@ export function ClubLogoSettings({
         </div>
 
         {/* 헤더에서 어떻게 보이는지 */}
-        <div className="flex flex-1 flex-col justify-center gap-1.5 rounded-lg border bg-background p-3">
-          <span className="text-[11px] text-muted-foreground">
+        <div className="relative flex min-h-28 flex-1 items-center justify-center rounded-lg border bg-background px-4 pb-3 pt-7">
+          <span className="absolute right-3 top-2 text-[11px] text-muted-foreground">
             헤더에서는 이렇게 보여요
           </span>
-          <div className="flex items-center gap-2 rounded-md px-2 py-1 text-lg font-bold">
+          <div className="flex items-center gap-2.5 rounded-md text-2xl font-bold">
             {shownUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={shownUrl}
                 alt=""
-                className="h-7 w-auto max-w-[120px] shrink-0 rounded-md object-contain"
+                className="h-12 w-auto max-w-[160px] shrink-0 rounded-md object-contain"
               />
             )}
             <span className="truncate">{clubName}</span>
