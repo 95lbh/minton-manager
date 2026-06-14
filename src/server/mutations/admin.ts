@@ -75,6 +75,78 @@ export async function resetStatsData(): Promise<ActionResult<{ count: number }>>
   return { ok: true, data: { count: data?.length ?? 0 } };
 }
 
+// ---- 신규 클럽: 샘플 데이터로 둘러보기 ----
+
+// 둘러보기용 고정 샘플 회원(이름·성별·급수·출생년도). 실제 운영 전 체험용.
+const SAMPLE_MEMBERS = [
+  { name: "김민준", gender: "male", level: 6, birth_year: 1990 },
+  { name: "이서연", gender: "female", level: 5, birth_year: 1994 },
+  { name: "박도윤", gender: "male", level: 4, birth_year: 1988 },
+  { name: "최지우", gender: "female", level: 4, birth_year: 1999 },
+  { name: "정현우", gender: "male", level: 3, birth_year: 1985 },
+  { name: "강하은", gender: "female", level: 3, birth_year: 2001 },
+  { name: "조서준", gender: "male", level: 2, birth_year: 1996 },
+  { name: "윤채원", gender: "female", level: 2, birth_year: 1992 },
+] as const;
+
+/**
+ * 신규(빈) 클럽에 샘플 회원·코트를 한 번에 생성한다. 둘러보기용.
+ * 이미 데이터가 있으면 중복 생성을 막기 위해 거절한다.
+ */
+export async function seedSampleData(): Promise<
+  ActionResult<{ members: number; courts: number }>
+> {
+  const club = await getActiveClub();
+  if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+
+  const supabase = await createClient();
+
+  // 빈 클럽에서만 허용(실수로 기존 데이터에 섞이지 않도록).
+  const [{ count: memberCnt }, { count: courtCnt }] = await Promise.all([
+    supabase
+      .from("club_members")
+      .select("id", { count: "exact", head: true })
+      .eq("club_id", club.id)
+      .is("deleted_at", null),
+    supabase
+      .from("courts")
+      .select("id", { count: "exact", head: true })
+      .eq("club_id", club.id)
+      .is("deleted_at", null),
+  ]);
+
+  if ((memberCnt ?? 0) > 0 || (courtCnt ?? 0) > 0)
+    return {
+      ok: false,
+      error: { message: "이미 데이터가 있어 샘플을 넣지 않았습니다." },
+    };
+
+  const { error: mErr } = await supabase
+    .from("club_members")
+    .insert(SAMPLE_MEMBERS.map((m) => ({ club_id: club.id, ...m })));
+  if (mErr)
+    return {
+      ok: false,
+      error: { message: "샘플 회원 생성에 실패했습니다.", detail: mErr.message },
+    };
+
+  const { error: cErr } = await supabase.from("courts").insert([
+    { club_id: club.id, name: "1번 코트", sort_order: 1 },
+    { club_id: club.id, name: "2번 코트", sort_order: 2 },
+  ]);
+  if (cErr)
+    return {
+      ok: false,
+      error: { message: "샘플 코트 생성에 실패했습니다.", detail: cErr.message },
+    };
+
+  revalidateOperational();
+  return {
+    ok: true,
+    data: { members: SAMPLE_MEMBERS.length, courts: 2 },
+  };
+}
+
 // ---- 개발자 모드: 무작위 회원 생성 ----
 
 const SURNAMES = [

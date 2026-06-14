@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, ChevronRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { SampleDataButton } from "@/features/dashboard/sample-data-button";
 import type { OnboardingProgress } from "@/server/queries/onboarding";
 
 interface Step {
@@ -24,6 +25,8 @@ const STEPS: Step[] = [
 export function StartChecklist({ progress }: { progress: OnboardingProgress }) {
   const done = (key: keyof OnboardingProgress) => progress[key] > 0;
   const completed = STEPS.filter((s) => done(s.key)).length;
+  // 완전히 빈 클럽이면 "샘플로 둘러보기"를 제안.
+  const isEmpty = progress.members === 0 && progress.courts === 0;
 
   // 모두 끝났으면 안내를 숨긴다.
   if (completed === STEPS.length) return null;
@@ -83,6 +86,12 @@ export function StartChecklist({ progress }: { progress: OnboardingProgress }) {
           );
         })}
       </ol>
+
+      {isEmpty && (
+        <div className="mt-3 border-t pt-3 text-center">
+          <SampleDataButton />
+        </div>
+      )}
     </div>
   );
 }

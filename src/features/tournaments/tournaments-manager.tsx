@@ -62,9 +62,14 @@ export function TournamentsManager({ tournaments }: { tournaments: Tournament[] 
       </div>
 
       {tournaments.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-12 text-center text-sm text-muted-foreground">
-          <Trophy className="h-6 w-6" />
-          아직 만든 대회가 없습니다. “대회 만들기”로 시작하세요.
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-12 text-center">
+          <Trophy className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            아직 만든 대회가 없습니다.
+          </p>
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> 첫 대회 만들기
+          </Button>
         </div>
       ) : (
         <ul className="space-y-2">

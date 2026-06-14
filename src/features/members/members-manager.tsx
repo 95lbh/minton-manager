@@ -128,11 +128,13 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
           <TableBody>
             {members.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  아직 회원이 없습니다. “회원 추가”로 시작하세요.
+                <TableCell colSpan={5} className="py-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    아직 회원이 없습니다.
+                  </p>
+                  <Button className="mt-3" onClick={openCreate}>
+                    <Plus className="size-4" />첫 회원 추가
+                  </Button>
                 </TableCell>
               </TableRow>
             )}
