@@ -9,6 +9,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { getActiveClub } from "@/server/queries/clubs";
+import { getOnboardingProgress } from "@/server/queries/onboarding";
+import { StartChecklist } from "@/features/dashboard/start-checklist";
 
 const CARDS: {
   href: string;
@@ -23,13 +26,18 @@ const CARDS: {
   { href: ROUTES.tournaments, title: "대회 모드", desc: "토너먼트·리그·청백전", icon: Trophy },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const club = await getActiveClub();
+  const progress = club ? await getOnboardingProgress(club.id) : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight">대시보드</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         오늘의 운영을 빠르게 시작하세요.
       </p>
+
+      {progress && <StartChecklist progress={progress} />}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((card) => (
