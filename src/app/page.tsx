@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ClipboardCheck,
   LayoutGrid,
@@ -213,8 +214,16 @@ export default async function Home() {
           </div>
         </section>
 
-        <footer className="mt-16 text-center text-xs text-muted-foreground">
-          마이민턴 (myminton) · made by bhlee
+        <footer className="mt-16 flex flex-col items-center gap-2 text-center text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <Link href={ROUTES.privacy} className="hover:text-foreground">
+              개인정보처리방침
+            </Link>
+            <Link href={ROUTES.terms} className="hover:text-foreground">
+              이용약관
+            </Link>
+          </div>
+          <span>마이민턴 (myminton) · made by bhlee</span>
         </footer>
       </div>
     </main>

@@ -11,6 +11,8 @@ export const ROUTES = {
   stats: "/stats",
   tournaments: "/tournaments",
   settings: "/settings",
+  privacy: "/privacy",
+  terms: "/terms",
 } as const;
 
 /** 성별 표시 라벨. */
@@ -50,7 +52,12 @@ export const ATTENDEE_STATUS_LABEL: Record<AttendeeStatus, string> = {
 };
 
 /** 로그인 없이 접근 가능한 경로(접두사). 나머지는 모두 보호 경로. */
-export const PUBLIC_PATH_PREFIXES = ["/login", "/auth"] as const;
+export const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/auth",
+  "/privacy",
+  "/terms",
+] as const;
 
 /** 해당 경로가 공개 경로인지. (홈 "/"은 별도로 허용 — 홈에서 대시보드로 리다이렉트) */
 export function isPublicPath(pathname: string): boolean {
