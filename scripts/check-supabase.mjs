@@ -154,6 +154,17 @@ console.log("\n[마이그레이션 적용 여부]");
   ? pass("0018 club_members.birth_year")
   : fail("0018 club_members.birth_year 없음 — 0018_member_birth_year.sql");
 
+// 0019: QR 셀프 체크인 (토큰 컬럼 + RPC 2개)
+(await columnExists("attendance_sessions", "checkin_token"))
+  ? pass("0019 attendance_sessions.checkin_token")
+  : fail("0019 checkin_token 컬럼 없음 — 0019_qr_self_checkin.sql");
+(await rpcExists("get_checkin_roster", { _token: NIL }))
+  ? pass("0019 get_checkin_roster RPC")
+  : fail("0019 get_checkin_roster RPC 없음 — 0019_qr_self_checkin.sql");
+(await rpcExists("self_check_in", { _token: NIL, _member_id: NIL }))
+  ? pass("0019 self_check_in RPC")
+  : fail("0019 self_check_in RPC 없음 — 0019_qr_self_checkin.sql");
+
 // 0017: 실시간 퍼블리케이션 — anon 으로 pg_publication_tables 조회 불가 → 수동 안내
 warn(
   "0017 Realtime 퍼블리케이션은 자동 확인 불가 — SQL Editor에서 확인:\n" +

@@ -57,6 +57,7 @@ export const PUBLIC_PATH_PREFIXES = [
   "/auth",
   "/privacy",
   "/terms",
+  "/checkin",
 ] as const;
 
 /** 해당 경로가 공개 경로인지. (홈 "/"은 별도로 허용 — 홈에서 대시보드로 리다이렉트) */
