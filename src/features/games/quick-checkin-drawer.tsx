@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { QrCode, X } from "lucide-react";
 import { CheckinQrContent } from "@/features/attendance/checkin-qr";
 
@@ -8,49 +8,37 @@ const SWIPE = 40; // 스와이프 인식 최소 이동(px)
 
 /**
  * 코트/게임 화면에서 출석 탭으로 가지 않고도 QR 셀프 출석을 띄우는 접이식 바텀시트.
- * 하단 토글을 누르거나 화면 하단에서 위로 쓸어 올리면 열린다(모바일).
+ * 하단 토글 탭을 누르거나, 그 탭에서 위로 쓸어 올리면 열린다(모바일).
  */
 export function QuickCheckinDrawer({ checkinToken }: { checkinToken: string }) {
   const [open, setOpen] = useState(false);
   const sheetStartY = useRef<number | null>(null);
-
-  // 화면 하단에서 위로 스와이프 → 열기.
-  useEffect(() => {
-    let startY: number | null = null;
-    let fromBottom = false;
-    const onStart = (e: TouchEvent) => {
-      const t = e.touches[0];
-      if (!t) return;
-      startY = t.clientY;
-      fromBottom = t.clientY > window.innerHeight - 120;
-    };
-    const onEnd = (e: TouchEvent) => {
-      if (startY == null) return;
-      const endY = e.changedTouches[0]?.clientY ?? startY;
-      if (!open && fromBottom && startY - endY > SWIPE) setOpen(true);
-      startY = null;
-    };
-    window.addEventListener("touchstart", onStart, { passive: true });
-    window.addEventListener("touchend", onEnd, { passive: true });
-    return () => {
-      window.removeEventListener("touchstart", onStart);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, [open]);
+  const toggleStartY = useRef<number | null>(null);
 
   return (
     <>
-      {/* 하단 중앙 토글 — 바텀시트의 윗부분(손잡이)이 살짝 올라온 형태 */}
+      {/* 하단 중앙 토글 — 사다리꼴 탭(배경/글씨 반전). 탭에서 위로 쓸어도 열림. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`group fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-1 rounded-t-2xl border border-b-0 bg-card px-7 pb-2.5 pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] transition-all hover:pb-3.5 ${
+        onTouchStart={(e) => {
+          toggleStartY.current = e.touches[0]?.clientY ?? null;
+        }}
+        onTouchEnd={(e) => {
+          const s = toggleStartY.current;
+          if (s == null) return;
+          const end = e.changedTouches[0]?.clientY ?? s;
+          if (s - end > SWIPE) setOpen(true); // 위로 쓸면 열기
+          toggleStartY.current = null;
+        }}
+        style={{ clipPath: "polygon(16% 0, 84% 0, 100% 100%, 0 100%)" }}
+        className={`group fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-1 bg-primary px-10 pb-2.5 pt-2 text-primary-foreground shadow-[0_-4px_16px_rgba(0,0,0,0.12)] transition-all hover:pt-2.5 ${
           open ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
         aria-label="QR 셀프 출석 열기 (위로 쓸어올리기)"
       >
-        <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-primary/40" />
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+        <span className="h-1.5 w-9 rounded-full bg-primary-foreground/50" />
+        <span className="flex items-center gap-1.5 text-sm font-semibold">
           <QrCode className="size-4" />
           QR 셀프 출석
         </span>

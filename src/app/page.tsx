@@ -20,7 +20,7 @@ const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   {
     icon: ClipboardCheck,
     title: "출석 관리",
-    desc: "회원·게스트 출석을 한 번에. 명단과 대기 인원을 바로 정리합니다.",
+    desc: "회원·게스트 출석을 한 번에. QR 셀프 체크인으로 회원이 직접 출석할 수 있어요.",
   },
   {
     icon: LayoutGrid,
@@ -60,7 +60,7 @@ const SLIDES: Slide[] = [
     src: "/screenshots/attendance.png",
     alt: "마이민턴 출석 관리 화면 — 회원·게스트 출석 체크",
     title: "출석 관리",
-    desc: "회원·게스트 출석을 한 번에 체크해요. 명단과 대기 인원이 바로 정리됩니다.",
+    desc: "회원·게스트 출석을 한 번에 체크해요. QR 셀프 체크인으로 회원이 직접, 현장이 빨라집니다.",
   },
   {
     src: "/screenshots/stats.png",
