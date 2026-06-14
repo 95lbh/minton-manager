@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QrCode, ChevronUp, X } from "lucide-react";
+import { QrCode, X } from "lucide-react";
 import { CheckinQrContent } from "@/features/attendance/checkin-qr";
 
 const SWIPE = 40; // 스와이프 인식 최소 이동(px)
@@ -40,16 +40,20 @@ export function QuickCheckinDrawer({ checkinToken }: { checkinToken: string }) {
 
   return (
     <>
-      {/* 하단 중앙 토글 */}
+      {/* 하단 중앙 토글 — 바텀시트의 윗부분(손잡이)이 살짝 올라온 형태 */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:-translate-x-1/2 hover:scale-105"
-        aria-label="QR 셀프 출석 열기"
+        className={`group fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-1 rounded-t-2xl border border-b-0 bg-card px-7 pb-2.5 pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] transition-all hover:pb-3.5 ${
+          open ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+        aria-label="QR 셀프 출석 열기 (위로 쓸어올리기)"
       >
-        <QrCode className="size-4" />
-        QR 셀프 출석
-        <ChevronUp className="size-4" />
+        <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-primary/40" />
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+          <QrCode className="size-4" />
+          QR 셀프 출석
+        </span>
       </button>
 
       {/* backdrop */}
