@@ -15,6 +15,7 @@ import { APP_NAME, ROUTES } from "@/lib/constants";
 import { getCurrentUser } from "@/server/queries/auth";
 import { LandingAuth } from "@/features/auth/landing-auth";
 import { Reveal } from "@/components/reveal";
+import { Slideshow, type Slide } from "@/components/slideshow";
 
 const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   {
@@ -46,6 +47,24 @@ const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
     icon: Share2,
     title: "함께 운영",
     desc: "공유 코드로 공동 관리자를 초대하고 소유권까지 넘길 수 있어요.",
+  },
+];
+
+const SLIDES: Slide[] = [
+  {
+    src: "/screenshots/court2.png",
+    alt: "마이민턴 코트 현황 화면 — 코트별 진행 게임과 대기자 자동 배정",
+    caption: "코트 현황 — 진행 게임과 대기열을 한눈에",
+  },
+  {
+    src: "/screenshots/attendance.png",
+    alt: "마이민턴 출석 관리 화면 — 회원·게스트 출석 체크",
+    caption: "출석 관리 — 회원·게스트 체크인을 한 번에",
+  },
+  {
+    src: "/screenshots/stats.png",
+    alt: "마이민턴 통계 화면 — 회원별 참여와 성별·급수 분포",
+    caption: "통계 — 참여 현황과 성별·급수 분포를 자동 집계",
   },
 ];
 
@@ -194,42 +213,9 @@ export default async function Home() {
               출석부터 통계까지, 화면으로 보기
             </h2>
           </Reveal>
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <Reveal>
-              <figure>
-              <div className="overflow-hidden rounded-xl border shadow-sm">
-                <Image
-                  src="/screenshots/attendance.png"
-                  alt="마이민턴 출석 관리 화면 — 회원·게스트 출석 체크"
-                  width={1600}
-                  height={900}
-                  sizes="(max-width: 1024px) 100vw, 480px"
-                  className="h-auto w-full"
-                />
-              </div>
-              <figcaption className="mt-2 text-sm text-muted-foreground">
-                출석 관리 — 회원·게스트 체크인을 한 번에
-              </figcaption>
-              </figure>
-            </Reveal>
-            <Reveal delay={120}>
-              <figure>
-              <div className="overflow-hidden rounded-xl border shadow-sm">
-                <Image
-                  src="/screenshots/stats.png"
-                  alt="마이민턴 통계 화면 — 회원별 참여와 성별·급수 분포"
-                  width={1600}
-                  height={900}
-                  sizes="(max-width: 1024px) 100vw, 480px"
-                  className="h-auto w-full"
-                />
-              </div>
-              <figcaption className="mt-2 text-sm text-muted-foreground">
-                통계 — 참여 현황과 성별·급수 분포를 자동 집계
-              </figcaption>
-              </figure>
-            </Reveal>
-          </div>
+          <Reveal className="mx-auto mt-6 max-w-3xl">
+            <Slideshow slides={SLIDES} />
+          </Reveal>
         </section>
 
         <footer className="mt-16 flex flex-col items-center gap-2 text-center text-xs text-muted-foreground">
