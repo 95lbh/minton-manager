@@ -77,7 +77,7 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
               alt={s.alt}
               fill
               priority={i === 0}
-              sizes="(max-width: 1024px) 100vw, 880px"
+              sizes="(max-width: 1024px) 100vw, 1000px"
               className={cn(
                 "object-cover transition-all duration-[900ms] ease-[cubic-bezier(0.32,0.72,0,1)]",
                 i === index ? "scale-100 opacity-100" : "scale-105 opacity-0",
