@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 export interface Slide {
   src: string;
   alt: string;
-  caption: string;
+  title: string;
+  desc: string;
 }
 
 const INTERVAL = 4000;
@@ -62,6 +63,7 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
             src={s.src}
             alt={s.alt}
             fill
+            priority={i === 0}
             sizes="(max-width: 1024px) 100vw, 960px"
             className={cn(
               "object-cover transition-opacity duration-700 ease-out",
@@ -90,13 +92,15 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
         </button>
       </div>
 
-      {/* 캡션 */}
-      <p
-        aria-live="polite"
-        className="mt-3 text-center text-sm text-muted-foreground"
-      >
-        {slides[index].caption}
-      </p>
+      {/* 제목 + 설명 */}
+      <div aria-live="polite" className="mt-4 text-center">
+        <h3 className="text-lg font-bold tracking-tight">
+          {slides[index].title}
+        </h3>
+        <p className="mx-auto mt-1.5 max-w-xl text-sm text-muted-foreground">
+          {slides[index].desc}
+        </p>
+      </div>
 
       {/* 점 인디케이터 */}
       <div className="mt-3 flex justify-center gap-2">

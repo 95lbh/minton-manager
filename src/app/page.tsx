@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ClipboardCheck,
@@ -54,17 +53,20 @@ const SLIDES: Slide[] = [
   {
     src: "/screenshots/court2.png",
     alt: "마이민턴 코트 현황 화면 — 코트별 진행 게임과 대기자 자동 배정",
-    caption: "코트 현황 — 진행 게임과 대기열을 한눈에",
+    title: "코트 자동 배정 & 게임 운영",
+    desc: "대기 순서·파트너 다양성·실력 균형을 고려한 자동 배정. 코트별 게임 시작·종료와 대기열을 모바일로 한눈에, 중복 배정도 막아줍니다.",
   },
   {
     src: "/screenshots/attendance.png",
     alt: "마이민턴 출석 관리 화면 — 회원·게스트 출석 체크",
-    caption: "출석 관리 — 회원·게스트 체크인을 한 번에",
+    title: "출석 관리",
+    desc: "회원·게스트 출석을 한 번에 체크. QR 셀프 체크인까지 지원해 현장이 빨라집니다.",
   },
   {
     src: "/screenshots/stats.png",
     alt: "마이민턴 통계 화면 — 회원별 참여와 성별·급수 분포",
-    caption: "통계 — 참여 현황과 성별·급수 분포를 자동 집계",
+    title: "참여 통계",
+    desc: "회원별 참여와 성별·급수·나이대 분포까지 자동 집계로 클럽 현황을 한눈에 파악합니다.",
   },
 ];
 
@@ -158,63 +160,32 @@ export default async function Home() {
           </Reveal>
         </div>
 
-        {/* 제품 미리보기 (코트 현황 히어로 샷) */}
-        <Reveal className="mt-12 overflow-hidden rounded-2xl border bg-card shadow-lg sm:mt-16">
-          <div className="flex items-center gap-1.5 border-b bg-muted/40 px-4 py-2.5">
-            <span className="size-2.5 rounded-full bg-red-400/70" />
-            <span className="size-2.5 rounded-full bg-amber-400/70" />
-            <span className="size-2.5 rounded-full bg-green-400/70" />
-            <span className="ml-2 text-xs text-muted-foreground">
-              코트 현황 — 진행 게임과 대기열을 한눈에
-            </span>
-          </div>
-          <Image
-            src="/screenshots/court2.png"
-            alt="마이민턴 코트 현황 화면 — 코트별 진행 게임과 대기자 자동 배정"
-            width={1600}
-            height={900}
-            priority
-            sizes="(max-width: 1024px) 100vw, 960px"
-            className="h-auto w-full"
-          />
-        </Reveal>
-
-        {/* 기능 소개 */}
-        <section className="mt-16 sm:mt-24">
+        {/* 하단: 화면+기능을 하나의 자동 슬라이드쇼로 */}
+        <section className="mt-14 sm:mt-20">
           <Reveal>
-            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            <h2 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
               동호회 운영에 필요한 모든 것
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-center text-sm text-muted-foreground">
               출석·코트·게임·통계·대회까지, 현장 운영 도구로 설계했습니다.
             </p>
           </Reveal>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f, i) => (
-              <Reveal
-                key={f.title}
-                delay={(i % 3) * 100}
-                className="rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <f.icon className="size-5" />
-                </div>
-                <h3 className="mt-3 font-semibold tracking-tight">{f.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
-              </Reveal>
-            ))}
-          </div>
-        </section>
 
-        {/* 화면 미리보기: 출석 / 통계 */}
-        <section className="mt-16 sm:mt-24">
-          <Reveal>
-            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-              출석부터 통계까지, 화면으로 보기
-            </h2>
-          </Reveal>
-          <Reveal className="mx-auto mt-6 max-w-3xl">
+          <Reveal className="mx-auto mt-8 max-w-3xl">
             <Slideshow slides={SLIDES} />
+          </Reveal>
+
+          {/* 그 외 기능 요약 */}
+          <Reveal className="mx-auto mt-8 flex max-w-2xl flex-wrap justify-center gap-2">
+            {FEATURES.map((f) => (
+              <span
+                key={f.title}
+                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground shadow-sm"
+              >
+                <f.icon className="size-4 text-primary" />
+                {f.title}
+              </span>
+            ))}
           </Reveal>
         </section>
 
