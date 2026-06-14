@@ -14,6 +14,7 @@ import { hasSupabaseEnv } from "@/lib/env";
 import { APP_NAME, ROUTES } from "@/lib/constants";
 import { getCurrentUser } from "@/server/queries/auth";
 import { LandingAuth } from "@/features/auth/landing-auth";
+import { Reveal } from "@/components/reveal";
 
 const FEATURES: { icon: LucideIcon; title: string; desc: string }[] = [
   {
@@ -106,32 +107,40 @@ export default async function Home() {
         {/* Hero */}
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
-            <p className="text-sm font-semibold text-primary">
-              {APP_NAME} · myminton
-            </p>
-            <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-              배드민턴 동호회 운영,
-              <br />
-              마이민턴 하나로.
-            </h1>
-            <p className="mt-4 text-base text-muted-foreground">
-              출석 체크부터 코트 자동 배정, 게임 운영, 통계까지. 회원은 가입 없이,
-              관리자는 모바일로 현장에서 바로. 설치 없이 URL만으로 시작하세요.
-            </p>
-            <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              <li>✓ 가입 없이 1초 시작</li>
-              <li>✓ 모바일 최적화</li>
-              <li>✓ 무료</li>
-            </ul>
+            <Reveal>
+              <p className="text-sm font-semibold text-primary">
+                {APP_NAME} · myminton
+              </p>
+            </Reveal>
+            <Reveal delay={120}>
+              <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+                배드민턴 동호회 운영,
+                <br />
+                마이민턴 하나로.
+              </h1>
+            </Reveal>
+            <Reveal delay={240}>
+              <p className="mt-4 text-base text-muted-foreground">
+                출석 체크부터 코트 자동 배정, 게임 운영, 통계까지. 회원은 가입 없이,
+                관리자는 모바일로 현장에서 바로. 설치 없이 URL만으로 시작하세요.
+              </p>
+            </Reveal>
+            <Reveal delay={360}>
+              <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                <li>✓ 가입 없이 1초 시작</li>
+                <li>✓ 모바일 최적화</li>
+                <li>✓ 무료</li>
+              </ul>
+            </Reveal>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
+          <Reveal delay={200} className="flex justify-center lg:justify-end">
             <LandingAuth />
-          </div>
+          </Reveal>
         </div>
 
         {/* 제품 미리보기 (코트 현황 히어로 샷) */}
-        <div className="mt-12 overflow-hidden rounded-2xl border bg-card shadow-lg sm:mt-16">
+        <Reveal className="mt-12 overflow-hidden rounded-2xl border bg-card shadow-lg sm:mt-16">
           <div className="flex items-center gap-1.5 border-b bg-muted/40 px-4 py-2.5">
             <span className="size-2.5 rounded-full bg-red-400/70" />
             <span className="size-2.5 rounded-full bg-amber-400/70" />
@@ -149,39 +158,45 @@ export default async function Home() {
             sizes="(max-width: 1024px) 100vw, 960px"
             className="h-auto w-full"
           />
-        </div>
+        </Reveal>
 
         {/* 기능 소개 */}
         <section className="mt-16 sm:mt-24">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            동호회 운영에 필요한 모든 것
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            출석·코트·게임·통계·대회까지, 현장 운영 도구로 설계했습니다.
-          </p>
+          <Reveal>
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+              동호회 운영에 필요한 모든 것
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              출석·코트·게임·통계·대회까지, 현장 운영 도구로 설계했습니다.
+            </p>
+          </Reveal>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => (
-              <div
+            {FEATURES.map((f, i) => (
+              <Reveal
                 key={f.title}
-                className="rounded-xl border bg-card p-5 shadow-sm"
+                delay={(i % 3) * 100}
+                className="rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <f.icon className="size-5" />
                 </div>
                 <h3 className="mt-3 font-semibold tracking-tight">{f.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </section>
 
         {/* 화면 미리보기: 출석 / 통계 */}
         <section className="mt-16 sm:mt-24">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            출석부터 통계까지, 화면으로 보기
-          </h2>
+          <Reveal>
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+              출석부터 통계까지, 화면으로 보기
+            </h2>
+          </Reveal>
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <figure>
+            <Reveal>
+              <figure>
               <div className="overflow-hidden rounded-xl border shadow-sm">
                 <Image
                   src="/screenshots/attendance.png"
@@ -195,8 +210,10 @@ export default async function Home() {
               <figcaption className="mt-2 text-sm text-muted-foreground">
                 출석 관리 — 회원·게스트 체크인을 한 번에
               </figcaption>
-            </figure>
-            <figure>
+              </figure>
+            </Reveal>
+            <Reveal delay={120}>
+              <figure>
               <div className="overflow-hidden rounded-xl border shadow-sm">
                 <Image
                   src="/screenshots/stats.png"
@@ -210,7 +227,8 @@ export default async function Home() {
               <figcaption className="mt-2 text-sm text-muted-foreground">
                 통계 — 참여 현황과 성별·급수 분포를 자동 집계
               </figcaption>
-            </figure>
+              </figure>
+            </Reveal>
           </div>
         </section>
 
