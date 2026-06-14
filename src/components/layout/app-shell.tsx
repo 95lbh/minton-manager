@@ -1,4 +1,5 @@
 import { AppNav } from "@/components/layout/app-nav";
+import { EdgeSwipeNav } from "@/components/layout/edge-swipe-nav";
 import { ClubSwitcher } from "@/components/layout/club-switcher";
 import { GuestBanner } from "@/components/layout/guest-banner";
 import { GuestNudge } from "@/components/layout/guest-nudge";
@@ -22,6 +23,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      <EdgeSwipeNav />
       {isGuest && <GuestBanner />}
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">

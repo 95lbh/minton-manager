@@ -25,6 +25,9 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: ROUTES.settings, label: "설정", icon: Settings },
 ];
 
+/** 탭 순서(스와이프 이동 등에서 공용으로 사용). */
+export const NAV_ROUTES = NAV_ITEMS.map((i) => i.href);
+
 export function AppNav() {
   const pathname = usePathname();
 
