@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getActiveClub } from "@/server/queries/clubs";
-import { getTodaySession } from "@/server/queries/attendance";
+import { getTodaySession, getAttendanceRecords } from "@/server/queries/attendance";
 import { getCourtViewData } from "@/server/queries/games";
+import { getMembers } from "@/server/queries/members";
 import { ROUTES } from "@/lib/constants";
 import { CourtBoard } from "@/features/games/court-board";
+import { QuickCheckinDrawer } from "@/features/games/quick-checkin-drawer";
 
 const linkButton =
   "inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90";
@@ -30,9 +32,16 @@ export default async function GamesPage() {
     );
   }
 
-  const data = await getCourtViewData(club.id, session.id);
+  const [data, members, records] = await Promise.all([
+    getCourtViewData(club.id, session.id),
+    getMembers(club.id, false),
+    getAttendanceRecords(session.id),
+  ]);
 
   const ongoingCount = data.ongoing.length;
+  const attendedMemberIds = records
+    .filter((r) => r.member_id)
+    .map((r) => r.member_id as string);
 
   return (
     <div>
@@ -53,6 +62,14 @@ export default async function GamesPage() {
       <div className="mt-6">
         <CourtBoard clubId={club.id} sessionId={session.id} data={data} />
       </div>
+
+      <QuickCheckinDrawer
+        sessionId={session.id}
+        clubId={club.id}
+        checkinToken={session.checkin_token}
+        members={members}
+        attendedMemberIds={attendedMemberIds}
+      />
     </div>
   );
 }

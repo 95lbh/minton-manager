@@ -49,16 +49,16 @@ export function CheckinQr({ token }: { token: string }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex w-full min-w-0 flex-col items-center gap-4">
             <div className="rounded-2xl border bg-white p-4">
               {url && (
                 <QRCodeSVG value={url} size={220} marginSize={1} level="M" />
               )}
             </div>
-            <p className="w-full truncate rounded-md bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
+            <p className="w-full min-w-0 truncate rounded-md bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
               {url}
             </p>
-            <div className="flex w-full gap-2">
+            <div className="flex w-full min-w-0 gap-2">
               <Button
                 type="button"
                 variant="outline"
