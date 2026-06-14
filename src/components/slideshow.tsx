@@ -20,8 +20,12 @@ const INTERVAL = 4000;
  * - prefers-reduced-motion 사용자는 자동재생을 끄고 수동 조작만 제공(접근성).
  * - 16:9 고정 비율 컨테이너라 슬라이드 전환에도 레이아웃 이동(CLS) 없음.
  */
+const FADE = 450; // 페이드아웃/인 각 단계 길이(ms)
+
 export function Slideshow({ slides }: { slides: Slide[] }) {
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(0); // 목표 슬라이드
+  const [display, setDisplay] = useState(0); // 실제 보이는 슬라이드
+  const [visible, setVisible] = useState(true); // 현재 슬라이드 노출(페이드)
   const [paused, setPaused] = useState(false);
   const reduceRef = useRef(false);
 
@@ -34,6 +38,17 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
     reduceRef.current =
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   }, []);
+
+  // 목표가 바뀌면: 현재를 먼저 페이드아웃 → 교체 → 페이드인 (순차).
+  useEffect(() => {
+    if (index === display) return;
+    setVisible(false);
+    const t = setTimeout(() => {
+      setDisplay(index);
+      setVisible(true);
+    }, FADE);
+    return () => clearTimeout(t);
+  }, [index, display]);
 
   useEffect(() => {
     if (paused || reduceRef.current || slides.length <= 1) return;
@@ -68,7 +83,7 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
           <ChevronLeft className="size-5" />
         </button>
 
-        {/* 슬라이드 (부드러운 크로스페이드 + 미세 줌) */}
+        {/* 슬라이드 (페이드아웃 → 페이드인) */}
         <div className="relative aspect-video flex-1 overflow-hidden rounded-2xl border bg-card shadow-lg">
           {slides.map((s, i) => (
             <Image
@@ -79,10 +94,11 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
               priority={i === 0}
               sizes="(max-width: 1024px) 100vw, 1000px"
               className={cn(
-                "object-cover transition-all duration-[900ms] ease-[cubic-bezier(0.32,0.72,0,1)]",
-                i === index ? "scale-100 opacity-100" : "scale-105 opacity-0",
+                "object-cover transition-opacity ease-out",
+                i === display && visible ? "opacity-100" : "opacity-0",
               )}
-              aria-hidden={i !== index}
+              style={{ transitionDuration: `${FADE}ms` }}
+              aria-hidden={i !== display}
             />
           ))}
         </div>
@@ -97,17 +113,20 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
         </button>
       </div>
 
-      {/* 제목 + 설명 (전환마다 부드럽게 등장) */}
+      {/* 제목 + 설명 (보이는 슬라이드에 맞춰 페이드) */}
       <div aria-live="polite" className="mt-5 text-center">
         <div
-          key={index}
-          className="duration-500 ease-out animate-in fade-in slide-in-from-bottom-2"
+          className={cn(
+            "transition-opacity ease-out",
+            visible ? "opacity-100" : "opacity-0",
+          )}
+          style={{ transitionDuration: `${FADE}ms` }}
         >
           <h3 className="text-lg font-bold tracking-tight">
-            {slides[index].title}
+            {slides[display].title}
           </h3>
           <p className="mx-auto mt-1.5 max-w-xl text-sm text-muted-foreground">
-            {slides[index].desc}
+            {slides[display].desc}
           </p>
         </div>
       </div>
@@ -118,12 +137,12 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
           <button
             key={s.src}
             type="button"
-            onClick={() => setIndex(i)}
+            onClick={() => go(i)}
             aria-label={`${i + 1}번째 화면 보기`}
-            aria-current={i === index}
+            aria-current={i === display}
             className={cn(
               "h-2 rounded-full transition-all duration-300",
-              i === index
+              i === display
                 ? "w-6 bg-primary"
                 : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50",
             )}
