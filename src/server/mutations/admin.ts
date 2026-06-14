@@ -2,10 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveClub } from "@/server/queries/clubs";
+import { getActiveClub, isActiveClubOwner } from "@/server/queries/clubs";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
 import type { MemberGender } from "@/types/db";
+
+/** 되돌릴 수 없는 일괄 초기화는 소유자만. (공동관리자도 차단) */
+const OWNER_ONLY_ERROR = {
+  message: "클럽 소유자만 초기화할 수 있습니다.",
+} as const;
 
 /** 초기화/시드 후 영향받는 화면 일괄 갱신. */
 function revalidateOperational() {
@@ -23,6 +28,7 @@ function revalidateOperational() {
 export async function resetMembers(): Promise<ActionResult<{ count: number }>> {
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+  if (!(await isActiveClubOwner())) return { ok: false, error: OWNER_ONLY_ERROR };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -50,6 +56,7 @@ export async function resetMembers(): Promise<ActionResult<{ count: number }>> {
 export async function resetStatsData(): Promise<ActionResult<{ count: number }>> {
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
+  if (!(await isActiveClubOwner())) return { ok: false, error: OWNER_ONLY_ERROR };
 
   const supabase = await createClient();
   const { data, error } = await supabase

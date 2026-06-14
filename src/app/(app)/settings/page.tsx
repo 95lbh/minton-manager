@@ -40,8 +40,8 @@ export default async function SettingsPage() {
           currentUserId={user?.id ?? ""}
           admins={admins}
         />
-        <DataTransferSettings />
-        <DataResetSettings />
+        <DataTransferSettings isOwner={isOwner} />
+        <DataResetSettings isOwner={isOwner} />
         <DevTools />
       </div>
     </div>

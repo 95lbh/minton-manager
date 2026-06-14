@@ -17,7 +17,11 @@ import type {
   MemberExportRow,
 } from "@/server/mutations/data-transfer-format";
 
-export function DataTransferSettings() {
+export function DataTransferSettings({
+  isOwner = true,
+}: {
+  isOwner?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   // 파일을 읽어 검증한 결과를 담아 두고, 덮어쓰기/병합 선택을 받는다.
@@ -184,13 +188,14 @@ export function DataTransferSettings() {
               variant="outline"
               className="h-auto justify-start border-destructive/40 py-3 text-left text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => runImport("overwrite")}
-              disabled={pending}
+              disabled={pending || !isOwner}
             >
               <Replace className="mr-2 h-4 w-4 shrink-0" />
               <span className="flex flex-col items-start">
                 <span className="font-medium">덮어쓰기</span>
                 <span className="text-xs text-muted-foreground/90">
                   기존 회원을 모두 비우고 교체합니다. (과거 기록은 보존)
+                  {!isOwner && " — 소유자만 가능"}
                 </span>
               </span>
             </Button>

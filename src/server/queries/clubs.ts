@@ -73,3 +73,13 @@ export const getActiveClub = cache(async function getActiveClub(): Promise<MyClu
   const matched = activeId ? clubs.find((c) => c.id === activeId) : undefined;
   return matched ?? clubs[0];
 });
+
+/**
+ * 현재 사용자가 활성 클럽의 **소유자(owner)** 인지.
+ * 공동관리자(코드로 조인하면 role='admin')도 일반 운영은 가능하지만,
+ * 회원·통계 전체 초기화 같은 **되돌릴 수 없는 일괄 작업은 소유자만** 하도록 게이트한다.
+ */
+export async function isActiveClubOwner(): Promise<boolean> {
+  const [user, club] = await Promise.all([getCurrentUser(), getActiveClub()]);
+  return !!user && !!club && club.owner_id === user.id;
+}

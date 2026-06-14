@@ -6,7 +6,7 @@ import { Users, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resetMembers, resetStatsData } from "@/server/mutations/admin";
 
-export function DataResetSettings() {
+export function DataResetSettings({ isOwner = true }: { isOwner?: boolean }) {
   const [pending, startTransition] = useTransition();
 
   const doResetMembers = () => {
@@ -49,6 +49,11 @@ export function DataResetSettings() {
       <p className="mt-1 text-xs text-muted-foreground">
         새 시즌 시작 등에 사용합니다. 신중하게 진행하세요.
       </p>
+      {!isOwner && (
+        <p className="mt-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+          되돌릴 수 없는 작업이라 <b>클럽 소유자만</b> 사용할 수 있습니다.
+        </p>
+      )}
       <div className="mt-3 space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -62,7 +67,7 @@ export function DataResetSettings() {
             variant="outline"
             className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={doResetMembers}
-            disabled={pending}
+            disabled={pending || !isOwner}
           >
             <Users className="mr-1 h-4 w-4" /> 회원 초기화
           </Button>
@@ -80,7 +85,7 @@ export function DataResetSettings() {
             variant="outline"
             className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={doResetData}
-            disabled={pending}
+            disabled={pending || !isOwner}
           >
             <Database className="mr-1 h-4 w-4" /> 데이터 초기화
           </Button>

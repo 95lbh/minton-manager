@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveClub } from "@/server/queries/clubs";
+import { getActiveClub, isActiveClubOwner } from "@/server/queries/clubs";
 import { getMembers } from "@/server/queries/members";
 import { ROUTES } from "@/lib/constants";
 import type { ActionResult } from "@/server/types";
@@ -103,6 +103,13 @@ export async function importMembers(
 
   if (mode !== "overwrite" && mode !== "merge")
     return { ok: false, error: { message: "올바르지 않은 불러오기 방식입니다." } };
+
+  // 덮어쓰기는 기존 회원을 모두 비우는 파괴적 작업 → 소유자만 허용. (병합은 추가형이라 허용)
+  if (mode === "overwrite" && !(await isActiveClubOwner()))
+    return {
+      ok: false,
+      error: { message: "덮어쓰기는 클럽 소유자만 할 수 있습니다. 병합을 사용하세요." },
+    };
 
   let rows = normalizeRows(rawMembers);
   if (rows.length === 0)
