@@ -50,12 +50,11 @@ export default async function GamesPage() {
             <span>대기 {data.pool.length}명</span>
           </div>
         </div>
+        <QuickCheckinDrawer checkinToken={session.checkin_token} />
       </div>
       <div className="mt-6">
         <CourtBoard clubId={club.id} sessionId={session.id} data={data} />
       </div>
-
-      <QuickCheckinDrawer checkinToken={session.checkin_token} />
     </div>
   );
 }
