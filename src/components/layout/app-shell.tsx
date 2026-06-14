@@ -51,7 +51,7 @@ export function AppShell({
       </main>
 
       <footer className="border-t py-4">
-        <p className="mx-auto max-w-6xl px-4 text-center text-xs text-muted-foreground">
+        <p className="mx-auto max-w-6xl px-4 text-right text-xs text-muted-foreground">
           마이민턴 (myminton) · made by bhlee
         </p>
       </footer>
