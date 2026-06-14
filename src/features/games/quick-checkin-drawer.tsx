@@ -32,6 +32,7 @@ export function QuickCheckinDrawer({ checkinToken }: { checkinToken: string }) {
 
       {/* 바텀시트 (아래로 쓸면 닫힘) */}
       <aside
+        data-no-swipe
         className={`fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md rounded-t-2xl border bg-background shadow-2xl transition-transform duration-300 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
         }`}

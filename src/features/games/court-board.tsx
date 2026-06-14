@@ -465,7 +465,8 @@ export function CourtBoard({
   );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-12 lg:items-start">
+    // 드래그로 코트 배정하는 영역 → 탭 스와이프 이동에서 제외.
+    <div data-no-swipe className="grid gap-5 lg:grid-cols-12 lg:items-start">
       {/* === 좌측: 대기자 큐 (모바일에선 코트 아래로) === */}
       <aside className="order-2 lg:order-1 lg:col-span-4 lg:sticky lg:top-4">
         <div className="flex flex-col rounded-xl border-2 border-primary/25 bg-card">
