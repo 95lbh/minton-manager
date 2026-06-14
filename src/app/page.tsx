@@ -163,11 +163,11 @@ export default async function Home() {
         {/* 하단: 화면+기능을 하나의 자동 슬라이드쇼로 */}
         <section className="mt-14 sm:mt-20">
           <Reveal>
-            <h2 className="text-center text-xl font-bold tracking-tight sm:text-2xl">
-              동호회 운영에 필요한 모든 것
+            <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+              운영은 가볍게, 게임은 더 많이
             </h2>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              출석·코트·게임·통계·대회까지, 현장 운영 도구로 설계했습니다.
+            <p className="mt-2 text-center text-sm text-muted-foreground sm:text-base">
+              출석부터 코트 배정·게임·통계까지, 한 손에서 끝나요.
             </p>
           </Reveal>
 
