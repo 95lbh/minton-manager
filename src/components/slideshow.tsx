@@ -20,7 +20,7 @@ const INTERVAL = 4000;
  * - prefers-reduced-motion 사용자는 자동재생을 끄고 수동 조작만 제공(접근성).
  * - 16:9 고정 비율 컨테이너라 슬라이드 전환에도 레이아웃 이동(CLS) 없음.
  */
-const FADE = 450; // 페이드아웃/인 각 단계 길이(ms)
+const FADE = 350; // 페이드아웃/인 각 단계 길이(ms)
 
 export function Slideshow({ slides }: { slides: Slide[] }) {
   const [index, setIndex] = useState(0); // 목표 슬라이드
