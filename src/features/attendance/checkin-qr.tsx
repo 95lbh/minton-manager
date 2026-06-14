@@ -1,0 +1,84 @@
+"use client";
+
+import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { toast } from "sonner";
+import { QrCode, Copy, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/**
+ * 관리자용: 현재 세션의 셀프 체크인 QR을 띄운다.
+ * 회원이 스캔하면 /checkin/{token} 공개 페이지에서 본인 이름을 눌러 출석.
+ */
+export function CheckinQr({ token }: { token: string }) {
+  const [open, setOpen] = useState(false);
+  // origin은 클라이언트에서만 알 수 있어 렌더 시 계산.
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/checkin/${token}`
+      : "";
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("링크를 복사했어요.");
+    } catch {
+      toast.error("복사에 실패했어요.");
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <QrCode className="size-4" />QR 출석
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>QR 셀프 출석</DialogTitle>
+            <DialogDescription>
+              회원이 이 QR을 스캔해 본인 이름을 누르면 출석 처리됩니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-2xl border bg-white p-4">
+              {url && (
+                <QRCodeSVG value={url} size={220} marginSize={1} level="M" />
+              )}
+            </div>
+            <p className="w-full truncate rounded-md bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
+              {url}
+            </p>
+            <div className="flex w-full gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={copy}
+              >
+                <Copy className="mr-1 size-4" /> 링크 복사
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink className="mr-1 size-4" /> 열기
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

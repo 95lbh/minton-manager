@@ -65,6 +65,7 @@ export interface AttendanceSession {
   session_date: string;
   name: string | null;
   status: SessionStatus;
+  checkin_token: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;

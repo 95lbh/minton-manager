@@ -15,6 +15,7 @@ import {
 } from "@/server/mutations/attendance";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_VALUE } from "@/lib/constants";
 import { PersonAvatar } from "@/components/person-avatar";
+import { CheckinQr } from "@/features/attendance/checkin-qr";
 import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
@@ -139,6 +140,7 @@ export function AttendanceManager({
         <span className="ml-auto text-xs text-muted-foreground">
           회원 {memberCount} · 게스트 {guestCount}
         </span>
+        <CheckinQr token={session.checkin_token} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
