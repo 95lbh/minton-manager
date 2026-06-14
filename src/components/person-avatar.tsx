@@ -24,6 +24,8 @@ export function PersonAvatar({
 }) {
   return (
     <div
+      // 성별(색)·급수(글자)는 항상 옆에 텍스트로 함께 표시되므로 스크린리더에는 장식으로 숨긴다.
+      aria-hidden="true"
       className={cn(
         "flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-bold",
         genderAvatarClass(gender),

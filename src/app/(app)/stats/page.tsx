@@ -2,6 +2,7 @@ import { Users, Swords, CalendarCheck, Activity } from "lucide-react";
 import { getActiveClub } from "@/server/queries/clubs";
 import { getMemberStats, getClubSummary } from "@/server/queries/stats";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_GRADES } from "@/lib/constants";
+import { buildAgeRows } from "@/lib/age";
 import { PersonAvatar } from "@/components/person-avatar";
 import { StatsShare } from "@/features/stats/stats-share";
 import {
@@ -69,23 +70,10 @@ export default async function StatsPage() {
 
   // ── 나이대 분포 (만 나이 근사 = 올해 - 출생년도) ──
   const currentYear = new Date().getFullYear();
-  const AGE_BANDS = ["10대", "20대", "30대", "40대", "50대 이상"] as const;
-  const ageMap = new Map<string, number>();
-  let ageUnknown = 0;
-  for (const r of rows) {
-    if (!r.birthYear) {
-      ageUnknown++;
-      continue;
-    }
-    const age = currentYear - r.birthYear;
-    const band =
-      age < 20 ? "10대" : age >= 50 ? "50대 이상" : `${Math.floor(age / 10) * 10}대`;
-    ageMap.set(band, (ageMap.get(band) ?? 0) + 1);
-  }
-  const ageRows = [
-    ...AGE_BANDS.map((band) => ({ label: band, count: ageMap.get(band) ?? 0 })),
-    ...(ageUnknown ? [{ label: "미지정", count: ageUnknown }] : []),
-  ];
+  const ageRows = buildAgeRows(
+    rows.map((r) => r.birthYear),
+    currentYear,
+  );
   const ageMax = Math.max(1, ...ageRows.map((a) => a.count));
 
   return (

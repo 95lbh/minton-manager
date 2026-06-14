@@ -289,6 +289,7 @@ export function AttendanceManager({
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="비회원 이름 *"
+                aria-label="게스트 이름"
                 maxLength={30}
               />
               <div className="space-y-1">

@@ -24,4 +24,17 @@ test("비회원 시작 → 클럽 생성 → 대시보드 진입", async ({ page
   await expect(
     page.getByRole("heading", { name: "대시보드" }),
   ).toBeVisible();
+
+  // 신규(빈) 클럽: 시작 가이드 + 샘플 데이터 둘러보기 노출
+  await expect(
+    page.getByRole("heading", { name: "시작 가이드" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /샘플 데이터로 먼저 둘러보기/ }).click();
+
+  // 샘플 회원이 회원 목록에 채워졌는지 확인
+  await page.goto("/members");
+  await expect(
+    page.getByRole("heading", { name: "회원 관리" }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("김민준")).toBeVisible({ timeout: 20_000 });
 });

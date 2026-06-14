@@ -256,6 +256,8 @@ export function TeamGamesManager({
                         <td className="px-3 py-2">
                           <span className="flex items-center gap-1.5">
                             <span
+                              role="img"
+                              aria-label={r.team === "blue" ? "청팀" : "백팀"}
                               className={`size-2 shrink-0 rounded-full ${r.team === "blue" ? "bg-sky-500" : "bg-rose-500"}`}
                             />
                             <span className="truncate">{r.name}</span>
