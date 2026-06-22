@@ -165,6 +165,11 @@ console.log("\n[마이그레이션 적용 여부]");
   ? pass("0019 self_check_in RPC")
   : fail("0019 self_check_in RPC 없음 — 0019_qr_self_checkin.sql");
 
+// 0020: 사용자 환경설정(계정별 광고 제거)
+(await columnExists("user_prefs", "ad_free"))
+  ? pass("0020 user_prefs.ad_free")
+  : fail("0020 user_prefs 테이블/ad_free 없음 — 0020_user_prefs_ad_free.sql");
+
 // 0017: 실시간 퍼블리케이션 — anon 으로 pg_publication_tables 조회 불가 → 수동 안내
 warn(
   "0017 Realtime 퍼블리케이션은 자동 확인 불가 — SQL Editor에서 확인:\n" +

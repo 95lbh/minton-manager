@@ -65,7 +65,7 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <b>Google</b> — 소셜 로그인(OAuth) 인증
+            <b>Google</b> — 소셜 로그인(OAuth) 인증, 광고 게재(AdSense, 도입 시)
           </li>
           <li>
             <b>Supabase</b> — 데이터베이스, 인증, 파일(로고) 저장
@@ -93,10 +93,15 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. 쿠키">
+      <LegalSection heading="7. 쿠키 및 광고">
         <p>
           서비스는 로그인 세션 유지를 위해 필수 쿠키를 사용합니다. 브라우저 설정에서
           쿠키를 차단할 수 있으나, 이 경우 로그인 등 일부 기능이 제한될 수 있습니다.
+        </p>
+        <p>
+          서비스는 Google AdSense를 통해 광고를 게재할 수 있으며, 이 과정에서 Google
+          및 제휴사가 광고 식별 쿠키를 사용할 수 있습니다. 광고 개인 최적화는 Google
+          계정 설정(adssettings.google.com)에서 관리할 수 있습니다.
         </p>
       </LegalSection>
 

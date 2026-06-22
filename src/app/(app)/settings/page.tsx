@@ -7,6 +7,8 @@ import { ClubLogoSettings } from "@/features/clubs/club-logo-settings";
 import { DataResetSettings } from "@/features/settings/data-reset";
 import { DataTransferSettings } from "@/features/settings/data-transfer";
 import { DevTools } from "@/features/settings/dev-tools";
+import { AdFreeSecret } from "@/features/settings/ad-free-secret";
+import { getAdFree } from "@/server/queries/prefs";
 
 export default async function SettingsPage() {
   const club = await getActiveClub();
@@ -20,6 +22,7 @@ export default async function SettingsPage() {
 
   // 임시(비회원) 클럽은 공유 기능을 숨기므로 관리자 목록 조회 생략.
   const admins = club.is_temporary ? [] : await listClubAdmins(club.id);
+  const adFree = await getAdFree();
 
   return (
     <div>
@@ -43,6 +46,7 @@ export default async function SettingsPage() {
         <DataTransferSettings isOwner={isOwner} />
         <DataResetSettings isOwner={isOwner} />
         <DevTools />
+        <AdFreeSecret adFree={adFree} />
       </div>
     </div>
   );

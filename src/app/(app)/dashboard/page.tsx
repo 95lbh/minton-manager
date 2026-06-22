@@ -11,7 +11,9 @@ import {
 import { ROUTES } from "@/lib/constants";
 import { getActiveClub } from "@/server/queries/clubs";
 import { getOnboardingProgress } from "@/server/queries/onboarding";
+import { getAdFree } from "@/server/queries/prefs";
 import { StartChecklist } from "@/features/dashboard/start-checklist";
+import { AdUnit } from "@/components/ads/ad-unit";
 
 const CARDS: {
   href: string;
@@ -29,6 +31,7 @@ const CARDS: {
 export default async function DashboardPage() {
   const club = await getActiveClub();
   const progress = club ? await getOnboardingProgress(club.id) : null;
+  const adFree = await getAdFree();
 
   return (
     <div>
@@ -61,6 +64,13 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* 광고 (env 설정 시에만 표시, 광고 제거 계정은 숨김) */}
+      {!adFree && (
+        <div className="mt-6">
+          <AdUnit slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_DASHBOARD} />
+        </div>
+      )}
     </div>
   );
 }

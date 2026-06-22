@@ -21,6 +21,6 @@ export const config = {
      * ⚠️ manifest.webmanifest 를 제외하지 않으면, 보호 경로로 취급돼 미인증 요청이
      *    매번 307 리다이렉트되어 무한 로딩을 유발한다(webmanifest 확장자로 제외).
      */
-    "/((?!_next/static|_next/image|favicon.ico|sw.js|offline.html|opengraph-image|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|offline.html|opengraph-image|robots.txt|sitemap.xml|ads.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|webmanifest)$).*)",
   ],
 };
