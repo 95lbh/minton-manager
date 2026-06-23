@@ -8,6 +8,8 @@ import { DEFAULT_SKILL_VALUE, type Composition } from "@/lib/constants";
 
 export type Gender = "male" | "female" | "other";
 export type GameSize = 2 | 4;
+/** 기본 게임 인원(복식 4명). */
+export const DEFAULT_GAME_SIZE: GameSize = 4;
 
 /** 배정 단위 1명. id는 보통 attendance_record_id. skill은 1~5(D~S). */
 export interface PlayerState {

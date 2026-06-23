@@ -103,6 +103,8 @@ export const COMPOSITION_LABEL: Record<Composition, string> = {
   womens: "여복",
   mixed: "혼복",
 };
+/** 코트 배정 기본 팀 구성. */
+export const DEFAULT_COMPOSITION: Composition = "mens";
 
 export const APP_NAME = "마이민턴";
 

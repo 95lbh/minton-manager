@@ -35,6 +35,7 @@ import {
   GRADE_BY_VALUE,
   COMPOSITIONS,
   COMPOSITION_LABEL,
+  DEFAULT_COMPOSITION,
   ATTENDEE_STATUSES,
   ATTENDEE_STATUS_LABEL,
   type Composition,
@@ -44,7 +45,11 @@ import { ElapsedTime } from "@/features/games/elapsed-time";
 import { WaitTime } from "@/features/games/wait-time";
 import { genderAvatarClass } from "@/components/person-avatar";
 import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
-import { recommendGame, type GameSize } from "@/server/services/assignment";
+import {
+  recommendGame,
+  DEFAULT_GAME_SIZE,
+  type GameSize,
+} from "@/server/services/assignment";
 import {
   startGame,
   endGame,
@@ -184,8 +189,9 @@ export function CourtBoard({
     [pool],
   );
 
-  const sizeOf = (courtId: string): GameSize => gameSize[courtId] ?? 4;
-  const compOf = (courtId: string): Composition => composition[courtId] ?? "mens";
+  const sizeOf = (courtId: string): GameSize => gameSize[courtId] ?? DEFAULT_GAME_SIZE;
+  const compOf = (courtId: string): Composition =>
+    composition[courtId] ?? DEFAULT_COMPOSITION;
   const selOf = (courtId: string): Set<string> => selected[courtId] ?? new Set();
 
   const toggleSelect = (courtId: string, recordId: string) => {
@@ -269,7 +275,7 @@ export function CourtBoard({
     setOpenCourt(courtId);
     setGameSize((p) => ({
       ...p,
-      [courtId]: (game.players.length === 2 ? 2 : 4) as GameSize,
+      [courtId]: (game.players.length === 2 ? 2 : DEFAULT_GAME_SIZE) as GameSize,
     }));
     setSelected((p) => ({
       ...p,
@@ -887,7 +893,9 @@ function AssignPanel({
         <div className="flex gap-2">
           <Select
             value={String(size)}
-            onValueChange={(v) => onSizeChange((v === "2" ? 2 : 4) as GameSize)}
+            onValueChange={(v) =>
+              onSizeChange((v === "2" ? 2 : DEFAULT_GAME_SIZE) as GameSize)
+            }
           >
             <SelectTrigger className="h-9 flex-1">
               <SelectValue>{SIZE_LABEL[size]}</SelectValue>

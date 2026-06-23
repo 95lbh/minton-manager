@@ -76,9 +76,14 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full antialiased">
       <head>
-        {/* Pretendard CDN 폰트 조기 연결(느린 네트워크 체감 개선) */}
+        {/* Pretendard CDN 폰트: 조기 연결 + HTML에서 바로 발견되도록 <link>로 로드
+            (globals.css의 @import 대비 3G에서 더 빨리 병렬 다운로드). */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
