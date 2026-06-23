@@ -28,6 +28,9 @@ export interface ScheduleResult {
   /** 성별 미지정 등으로 편성에서 제외된 인원 수 */
   excluded: number;
   reason?: string;
+  /** 편성 대상 중 최다/최소 게임 수(균형 지표). 게임 없으면 0. */
+  maxGames: number;
+  minGames: number;
 }
 
 type Comp = "mens" | "womens" | "mixed";
@@ -51,7 +54,7 @@ export function scheduleTeamGames(input: {
   const usable = blueM.length + blueF.length + whiteM.length + whiteF.length;
   const excluded = blue.length + white.length - usable;
 
-  if (gamesPerPlayer < 1) return { games: [], excluded };
+  if (gamesPerPlayer < 1) return { games: [], excluded, maxGames: 0, minGames: 0 };
 
   // 구성별 인원 요건
   const need = perSide; // 복식=2, 단식=1
@@ -68,6 +71,8 @@ export function scheduleTeamGames(input: {
     return {
       games: [],
       excluded,
+      maxGames: 0,
+      minGames: 0,
       reason: "유효한 성별 구성(남복/여복/혼복)을 만들 인원이 부족합니다.",
     };
   }
@@ -82,7 +87,13 @@ export function scheduleTeamGames(input: {
   if (femaleSchedulable) [...blueF, ...whiteF].forEach((p) => schedulable.add(p.id));
 
   if (schedulable.size === 0) {
-    return { games: [], excluded, reason: "편성 가능한 참가자가 없습니다." };
+    return {
+      games: [],
+      excluded,
+      maxGames: 0,
+      minGames: 0,
+      reason: "편성 가능한 참가자가 없습니다.",
+    };
   }
 
   // 게임 수 적은 순 → (목표 실력 근접) → 실력 → id
@@ -156,5 +167,9 @@ export function scheduleTeamGames(input: {
     games.push(best);
   }
 
-  return { games, excluded };
+  const counts = [...schedulable].map((id) => count.get(id) ?? 0);
+  const maxGames = counts.length ? Math.max(...counts) : 0;
+  const minGames = counts.length ? Math.min(...counts) : 0;
+
+  return { games, excluded, maxGames, minGames };
 }

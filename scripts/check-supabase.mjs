@@ -177,6 +177,11 @@ warn(
     "      (2행이면 적용됨. self_check_in 경합 처리·member_stats 취소제외도 0021에 포함)",
 );
 
+// 0023: 기간별 회원 통계 RPC
+(await rpcExists("member_stats_range", { _club_id: NIL, _from: "2020-01-01", _to: "2020-01-02" }))
+  ? pass("0023 member_stats_range RPC")
+  : fail("0023 member_stats_range RPC 없음 — 0023_member_stats_range.sql");
+
 // 0017: 실시간 퍼블리케이션 — anon 으로 pg_publication_tables 조회 불가 → 수동 안내
 warn(
   "0017 Realtime 퍼블리케이션은 자동 확인 불가 — SQL Editor에서 확인:\n" +

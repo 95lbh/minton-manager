@@ -61,13 +61,48 @@ export async function getMemberStats(clubId: string): Promise<MemberStatRow[]> {
   });
 
   // 게임 수 많은 순 → 출석 많은 순 → 이름
-  rows.sort(
-    (a, b) =>
-      b.gameCount - a.gameCount ||
-      b.attendCount - a.attendCount ||
-      a.name.localeCompare(b.name),
-  );
+  rows.sort(sortMemberStats);
 
+  return rows;
+}
+
+/** 회원별 통계 정렬 기준(게임 → 출석 → 이름). */
+function sortMemberStats(a: MemberStatRow, b: MemberStatRow): number {
+  return (
+    b.gameCount - a.gameCount ||
+    b.attendCount - a.attendCount ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+/**
+ * 기간([from,to], YYYY-MM-DD) 회원별 통계. session_date 기준.
+ * RPC member_stats_range(0023) 사용. 누적은 getMemberStats.
+ */
+export async function getMemberStatsRange(
+  clubId: string,
+  from: string,
+  to: string,
+): Promise<MemberStatRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("member_stats_range", {
+    _club_id: clubId,
+    _from: from,
+    _to: to,
+  });
+  if (error || !data) return [];
+
+  const rows: MemberStatRow[] = (data as Record<string, unknown>[]).map((r) => ({
+    memberId: r.member_id as string,
+    name: r.name as string,
+    gender: (r.gender as MemberStatRow["gender"]) ?? null,
+    level: (r.level as number | null) ?? null,
+    birthYear: (r.birth_year as number | null) ?? null,
+    attendCount: Number(r.attend_cnt ?? 0),
+    gameCount: Number(r.game_cnt ?? 0),
+    lastPlayedAt: (r.last_played_at as string | null) ?? null,
+  }));
+  rows.sort(sortMemberStats);
   return rows;
 }
 

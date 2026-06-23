@@ -91,6 +91,23 @@ describe("scheduleTeamGames (성별 구성)", () => {
     const inp = { blue, white, perSide: 2 as const, gamesPerPlayer: 3 };
     expect(scheduleTeamGames(inp)).toEqual(scheduleTeamGames(inp));
   });
+
+  it("균형 지표: 균형 입력은 max==min==목표", () => {
+    const blue = mk("b", 4, "male");
+    const white = mk("w", 4, "male");
+    const r = scheduleTeamGames({ blue, white, perSide: 2, gamesPerPlayer: 4 });
+    expect(r.minGames).toBeGreaterThanOrEqual(4);
+    expect(r.maxGames).toBe(r.minGames); // 균형이면 동일
+  });
+
+  it("균형 지표: 병목 구성이면 일부가 목표 초과(maxGames>목표)", () => {
+    // 혼복만 가능(MM/FF 불가)하고 blue 여자·white 남자가 각 1명 → 모든 게임에 강제 투입.
+    const blue = [...mk("bm", 4, "male"), ...mk("bf", 1, "female")];
+    const white = [...mk("wm", 1, "male"), ...mk("wf", 4, "female")];
+    const r = scheduleTeamGames({ blue, white, perSide: 2, gamesPerPlayer: 4 });
+    expect(r.minGames).toBeGreaterThanOrEqual(4); // 인당 보장은 충족
+    expect(r.maxGames).toBeGreaterThan(4); // 병목 인원은 목표 초과
+  });
 });
 
 function genderEq(g: Map<string, G>, m: { blue: string[]; white: string[] }) {

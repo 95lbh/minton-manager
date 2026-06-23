@@ -578,7 +578,9 @@ export async function autoSplitTeams(tournamentId: string): Promise<ActionResult
 export async function generateTeamGames(
   tournamentId: string,
   gamesPerPlayer: number,
-): Promise<ActionResult<{ excluded: number; excludedNames: string[] }>> {
+): Promise<
+  ActionResult<{ excluded: number; excludedNames: string[]; imbalance?: string }>
+> {
   const n = Math.max(1, Math.floor(gamesPerPlayer));
   const club = await getActiveClub();
   if (!club) return { ok: false, error: { message: "클럽을 먼저 선택하세요." } };
@@ -618,11 +620,21 @@ export async function generateTeamGames(
   const blue = parts.filter((p) => p.team === "blue").map(toSched);
   const white = parts.filter((p) => p.team === "white").map(toSched);
 
-  const { games, reason } = scheduleTeamGames({ blue, white, perSide, gamesPerPlayer: n });
+  const { games, reason, maxGames, minGames } = scheduleTeamGames({
+    blue,
+    white,
+    perSide,
+    gamesPerPlayer: n,
+  });
   if (reason) return { ok: false, error: { message: reason } };
   if (games.length === 0) {
     return { ok: false, error: { message: "편성할 게임이 없습니다. 팀 배정을 확인하세요." } };
   }
+  // 특정 성별-팀 조합이 병목이면 일부가 목표보다 훨씬 많이 뛰게 됨 → 운영자에게 안내.
+  const imbalance =
+    maxGames > n
+      ? `일부 인원이 최대 ${maxGames}게임까지 배정됐어요(목표 ${n}). 성비/팀 인원이 불균형합니다.`
+      : undefined;
 
   // 설정값 저장
   await supabase.from("tournaments").update({ games_per_player: n }).eq("id", tournamentId);
@@ -658,7 +670,10 @@ export async function generateTeamGames(
   }
 
   revalidatePath(`${ROUTES.tournaments}/${tournamentId}`, "layout");
-  return { ok: true, data: { excluded: excludedNames.length, excludedNames } };
+  return {
+    ok: true,
+    data: { excluded: excludedNames.length, excludedNames, imbalance },
+  };
 }
 
 /** 참가자 팀 수동 지정/해제(blue/white/null). */

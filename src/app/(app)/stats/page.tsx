@@ -3,6 +3,7 @@ import { Users, Swords, CalendarCheck, Activity } from "lucide-react";
 import { getActiveClub } from "@/server/queries/clubs";
 import {
   getMemberStats,
+  getMemberStatsRange,
   getClubSummary,
   type ClubSummary,
 } from "@/server/queries/stats";
@@ -10,6 +11,7 @@ import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_GRADES } from "@/lib/constants";
 import { buildAgeRows } from "@/lib/age";
 import { PersonAvatar } from "@/components/person-avatar";
 import { StatsShare } from "@/features/stats/stats-share";
+import { PeriodSelect } from "@/features/stats/period-select";
 import {
   Table,
   TableBody,
@@ -27,9 +29,38 @@ function formatDate(iso: string | null): string {
   });
 }
 
-export default async function StatsPage() {
+const PERIODS = ["all", "30d", "month"] as const;
+type Period = (typeof PERIODS)[number];
+
+function ymd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+/** 기간 코드 → [from, to] 날짜 문자열. all 이면 null. */
+function rangeFor(period: Period): { from: string; to: string } | null {
+  if (period === "all") return null;
+  const now = new Date();
+  const to = ymd(now);
+  if (period === "month") {
+    return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to };
+  }
+  const d = new Date(now);
+  d.setDate(d.getDate() - 29); // 최근 30일(오늘 포함)
+  return { from: ymd(d), to };
+}
+
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   const club = await getActiveClub();
   if (!club) return null;
+
+  const sp = await searchParams;
+  const period: Period = PERIODS.includes(sp.period as Period)
+    ? (sp.period as Period)
+    : "all";
 
   // 요약은 가벼우므로 먼저 받아 즉시 렌더. 무거운 회원별 통계는 아래에서 스트리밍.
   const summary = await getClubSummary(club.id);
@@ -71,9 +102,20 @@ export default async function StatsPage() {
         ))}
       </div>
 
+      {/* 기간 필터 (참여 집계에 적용) */}
+      <div className="mt-6 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold tracking-tight">회원 참여</h2>
+        <PeriodSelect value={period} />
+      </div>
+
       {/* 회원별 통계는 무거우므로 스트리밍(요약 먼저 보이고 이어서 채워짐) */}
-      <Suspense fallback={<StatsDetailsSkeleton />}>
-        <StatsDetails clubId={club.id} clubName={club.name} summary={summary} />
+      <Suspense key={period} fallback={<StatsDetailsSkeleton />}>
+        <StatsDetails
+          clubId={club.id}
+          clubName={club.name}
+          summary={summary}
+          period={period}
+        />
       </Suspense>
     </div>
   );
@@ -84,12 +126,17 @@ async function StatsDetails({
   clubId,
   clubName,
   summary,
+  period,
 }: {
   clubId: string;
   clubName: string;
   summary: ClubSummary;
+  period: Period;
 }) {
-  const rows = await getMemberStats(clubId);
+  const range = rangeFor(period);
+  const rows = range
+    ? await getMemberStatsRange(clubId, range.from, range.to)
+    : await getMemberStats(clubId);
 
   const total = rows.length;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -215,7 +262,7 @@ async function StatsDetails({
       )}
 
       {/* 회원별 통계 */}
-      <h2 className="mt-8 mb-2 text-sm font-bold tracking-tight">회원별 누적 참여</h2>
+      <h2 className="mt-8 mb-2 text-sm font-bold tracking-tight">회원별 참여</h2>
       <div className="overflow-x-auto rounded-xl border shadow-sm">
         <Table>
           <TableHeader>

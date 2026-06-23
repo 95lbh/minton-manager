@@ -156,6 +156,7 @@ export function TeamGamesManager({
       if (res.ok) {
         toast.success("게임을 편성했습니다.");
         if (res.data) warnExcluded(res.data.excludedNames);
+        if (res.data?.imbalance) toast.warning(res.data.imbalance);
       } else {
         toast.error(res.error.message);
       }
