@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { QrCode, Copy, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+// qrcode.react는 다이얼로그/바텀시트를 열 때만 필요 → 동적 import로 초기 번들에서 분리.
+const QRCodeSVG = dynamic(
+  () => import("qrcode.react").then((m) => m.QRCodeSVG),
+  { ssr: false },
+);
 
 /** QR 셀프 출석 본문(QR + 링크 복사/열기). 다이얼로그·드로어에서 공용. */
 export function CheckinQrContent({ token }: { token: string }) {

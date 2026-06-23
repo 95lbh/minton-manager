@@ -1,6 +1,11 @@
+import { Suspense } from "react";
 import { Users, Swords, CalendarCheck, Activity } from "lucide-react";
 import { getActiveClub } from "@/server/queries/clubs";
-import { getMemberStats, getClubSummary } from "@/server/queries/stats";
+import {
+  getMemberStats,
+  getClubSummary,
+  type ClubSummary,
+} from "@/server/queries/stats";
 import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_GRADES } from "@/lib/constants";
 import { buildAgeRows } from "@/lib/age";
 import { PersonAvatar } from "@/components/person-avatar";
@@ -26,10 +31,8 @@ export default async function StatsPage() {
   const club = await getActiveClub();
   if (!club) return null;
 
-  const [summary, rows] = await Promise.all([
-    getClubSummary(club.id),
-    getMemberStats(club.id),
-  ]);
+  // 요약은 가벼우므로 먼저 받아 즉시 렌더. 무거운 회원별 통계는 아래에서 스트리밍.
+  const summary = await getClubSummary(club.id);
 
   const cards = [
     { label: "회원", value: summary.memberCount, icon: Users, accent: false },
@@ -38,10 +41,58 @@ export default async function StatsPage() {
     { label: "오늘 게임", value: summary.todayGames, icon: Activity, accent: true },
   ];
 
-  // ── 회원 구성 분포 (활성 회원 rows 기준) ──
+  return (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight">통계</h1>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>{club.name}</span>
+        <span className="size-1 rounded-full bg-muted-foreground/40" />
+        <span>회원 {summary.memberCount}명</span>
+        <span className="size-1 rounded-full bg-muted-foreground/40" />
+        <span>누적 {summary.totalGames}게임</span>
+      </div>
+
+      {/* 요약 카드 */}
+      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-xl border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">{c.label}</div>
+              <c.icon
+                className={`size-4 ${c.accent ? "text-accent" : "text-muted-foreground/50"}`}
+              />
+            </div>
+            <div
+              className={`mt-1 text-3xl font-bold tabular-nums ${c.accent ? "text-accent" : ""}`}
+            >
+              {c.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 회원별 통계는 무거우므로 스트리밍(요약 먼저 보이고 이어서 채워짐) */}
+      <Suspense fallback={<StatsDetailsSkeleton />}>
+        <StatsDetails clubId={club.id} clubName={club.name} summary={summary} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** 회원별 통계 + 분포(성별/급수/나이대) — 별도 await로 스트리밍된다. */
+async function StatsDetails({
+  clubId,
+  clubName,
+  summary,
+}: {
+  clubId: string;
+  clubName: string;
+  summary: ClubSummary;
+}) {
+  const rows = await getMemberStats(clubId);
+
   const total = rows.length;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
-  const activeCount = rows.filter((r) => r.gameCount > 0).length;
 
   const g = { male: 0, female: 0, etc: 0 };
   for (const r of rows) {
@@ -68,7 +119,6 @@ export default async function StatsPage() {
   ];
   const levelMax = Math.max(1, ...levelRows.map((l) => l.count));
 
-  // ── 나이대 분포 (만 나이 근사 = 올해 - 출생년도) ──
   const currentYear = new Date().getFullYear();
   const ageRows = buildAgeRows(
     rows.map((r) => r.birthYear),
@@ -77,47 +127,15 @@ export default async function StatsPage() {
   const ageMax = Math.max(1, ...ageRows.map((a) => a.count));
 
   return (
-    <div>
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">통계</h1>
-        <StatsShare clubName={club.name} summary={summary} rows={rows} />
-      </div>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <span>{club.name}</span>
-        <span className="size-1 rounded-full bg-muted-foreground/40" />
-        <span>회원 {summary.memberCount}명</span>
-        <span className="size-1 rounded-full bg-muted-foreground/40" />
-        <span>누적 {summary.totalGames}게임</span>
-        <span className="size-1 rounded-full bg-muted-foreground/40" />
-        <span>활동 {activeCount}명</span>
-      </div>
-
-      {/* 요약 카드 */}
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-xl border bg-card p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">{c.label}</div>
-              <c.icon
-                className={`size-4 ${c.accent ? "text-accent" : "text-muted-foreground/50"}`}
-              />
-            </div>
-            <div
-              className={`mt-1 text-3xl font-bold tabular-nums ${c.accent ? "text-accent" : ""}`}
-            >
-              {c.value}
-            </div>
-          </div>
-        ))}
+    <>
+      {/* 공유 버튼 (회원 데이터 필요) */}
+      <div className="mt-4 flex justify-end">
+        <StatsShare clubName={clubName} summary={summary} rows={rows} />
       </div>
 
       {/* 회원 구성: 성별 / 급수 분포 */}
       {total > 0 && (
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
-          {/* 성별 구성 */}
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold tracking-tight">성별 구성</h2>
@@ -125,11 +143,7 @@ export default async function StatsPage() {
             </div>
             <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-muted">
               {genderSegments.map((s) => (
-                <div
-                  key={s.key}
-                  className={s.color}
-                  style={{ width: `${pct(s.count)}%` }}
-                />
+                <div key={s.key} className={s.color} style={{ width: `${pct(s.count)}%` }} />
               ))}
             </div>
             <ul className="mt-3 space-y-1.5 text-sm">
@@ -139,20 +153,16 @@ export default async function StatsPage() {
                   <span>{s.label}</span>
                   <span className="ml-auto tabular-nums">
                     {s.count}명{" "}
-                    <span className="text-muted-foreground">
-                      ({pct(s.count)}%)
-                    </span>
+                    <span className="text-muted-foreground">({pct(s.count)}%)</span>
                   </span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* 급수 분포 */}
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold tracking-tight">급수 분포</h2>
-              {/* <span className="text-xs text-muted-foreground">S → F</span> */}
             </div>
             <ul className="mt-3 space-y-1.5">
               {levelRows.map((l) => (
@@ -181,9 +191,7 @@ export default async function StatsPage() {
         <div className="mt-3 rounded-xl border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold tracking-tight">나이대 분포</h2>
-            <span className="text-xs text-muted-foreground">
-              {currentYear}년 기준
-            </span>
+            <span className="text-xs text-muted-foreground">{currentYear}년 기준</span>
           </div>
           <ul className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
             {ageRows.map((a) => (
@@ -207,9 +215,7 @@ export default async function StatsPage() {
       )}
 
       {/* 회원별 통계 */}
-      <h2 className="mt-8 mb-2 text-sm font-bold tracking-tight">
-        회원별 누적 참여
-      </h2>
+      <h2 className="mt-8 mb-2 text-sm font-bold tracking-tight">회원별 누적 참여</h2>
       <div className="overflow-x-auto rounded-xl border shadow-sm">
         <Table>
           <TableHeader>
@@ -225,10 +231,7 @@ export default async function StatsPage() {
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                   아직 회원이 없습니다.
                 </TableCell>
               </TableRow>
@@ -249,9 +252,7 @@ export default async function StatsPage() {
                   </div>
                 </TableCell>
                 <TableCell>{r.gender ? GENDER_LABEL[r.gender] : "-"}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {r.attendCount}
-                </TableCell>
+                <TableCell className="text-right tabular-nums">{r.attendCount}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">
                   {r.gameCount}
                 </TableCell>
@@ -263,10 +264,20 @@ export default async function StatsPage() {
           </TableBody>
         </Table>
       </div>
+    </>
+  );
+}
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        {/* ※ 일반 운영 모드는 승패/점수를 기록하지 않으므로 참여 횟수 중심입니다. */}
-      </p>
+/** 스트리밍 대기 동안 보여줄 자리표시(레이아웃 이동 최소화). */
+function StatsDetailsSkeleton() {
+  return (
+    <div className="mt-3 animate-pulse space-y-3" aria-hidden>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="h-40 rounded-xl border bg-muted/40" />
+        <div className="h-40 rounded-xl border bg-muted/40" />
+      </div>
+      <div className="h-32 rounded-xl border bg-muted/40" />
+      <div className="h-64 rounded-xl border bg-muted/40" />
     </div>
   );
 }

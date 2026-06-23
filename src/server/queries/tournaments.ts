@@ -4,9 +4,10 @@ import type { Tournament, TournamentParticipant } from "@/types/db";
 /** 클럽의 대회 목록(삭제 제외, 최신순). */
 export async function getTournaments(clubId: string): Promise<Tournament[]> {
   const supabase = await createClient();
+  // 목록은 id·이름·형식·상태만 사용 → 필요한 컬럼만.
   const { data, error } = await supabase
     .from("tournaments")
-    .select("*")
+    .select("id, name, match_type, status, created_at")
     .eq("club_id", clubId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });

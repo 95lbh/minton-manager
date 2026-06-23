@@ -7,9 +7,10 @@ export async function getMembers(
   includeInactive = true,
 ): Promise<ClubMember[]> {
   const supabase = await createClient();
+  // 실제 사용 컬럼만 — 클라이언트로 직렬화되는 payload를 줄인다.
   let query = supabase
     .from("club_members")
-    .select("*")
+    .select("id, club_id, name, gender, level, birth_year, phone")
     .eq("club_id", clubId)
     .is("deleted_at", null)
     .order("name", { ascending: true });

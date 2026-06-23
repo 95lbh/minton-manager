@@ -84,7 +84,7 @@ export async function getCourtViewData(
       .order("checked_in_at", { ascending: true }),
     supabase
       .from("games")
-      .select("*")
+      .select("id, court_id, session_id, status, started_at")
       .eq("session_id", sessionId)
       .order("started_at", { ascending: true }),
     // 오늘 세션의 게임에 속한 참가자만 조회(전체 클럽 이력 과다 조회 방지).
