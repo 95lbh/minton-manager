@@ -78,3 +78,23 @@ export async function endGame(gameId: string): Promise<ActionResult> {
   revalidatePath(ROUTES.games);
   return { ok: true };
 }
+
+/**
+ * 게임 취소 — 잘못 시작한 게임을 통째로 되돌린다.
+ * status=canceled 로 바꾸면 트리거(deactivate_players_on_game_end)가 참가자를
+ * 비활성화해 대기열로 복귀시킨다. 취소 게임은 통계(member_stats)에서 제외된다.
+ */
+export async function cancelGame(gameId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("games")
+    .update({ status: "canceled" })
+    .eq("id", gameId)
+    .eq("status", "ongoing"); // 진행 중인 게임만 취소
+
+  if (error)
+    return { ok: false, error: { message: "게임 취소에 실패했습니다.", detail: error.message } };
+
+  revalidatePath(ROUTES.games);
+  return { ok: true };
+}

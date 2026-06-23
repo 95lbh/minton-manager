@@ -170,6 +170,13 @@ console.log("\n[마이그레이션 적용 여부]");
   ? pass("0020 user_prefs.ad_free")
   : fail("0020 user_prefs 테이블/ad_free 없음 — 0020_user_prefs_ad_free.sql");
 
+// 0021: 정합성 보강 — 함수/트리거/뷰 변경이라 anon 자동 확인 불가 → 수동 안내
+warn(
+  "0021 정합성 보강은 자동 확인 불가 — SQL Editor에서 확인:\n" +
+    "      select tgname from pg_trigger where tgname in ('trg_attendance_member_club','trg_tparticipant_member_club');\n" +
+    "      (2행이면 적용됨. self_check_in 경합 처리·member_stats 취소제외도 0021에 포함)",
+);
+
 // 0017: 실시간 퍼블리케이션 — anon 으로 pg_publication_tables 조회 불가 → 수동 안내
 warn(
   "0017 Realtime 퍼블리케이션은 자동 확인 불가 — SQL Editor에서 확인:\n" +

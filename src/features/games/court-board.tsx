@@ -13,6 +13,7 @@ import {
   Plus,
   Pencil,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import {
   startGame,
   endGame,
   replaceGamePlayers,
+  cancelGame,
 } from "@/server/mutations/games";
 import { addCourt, deleteCourt, renameCourt } from "@/server/mutations/courts";
 import { setAttendeeStatus } from "@/server/mutations/attendance";
@@ -746,6 +748,24 @@ export function CourtBoard({
                           <Square className="size-4" />종료
                         </Button>
                       </div>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              "이 게임을 취소할까요? 참가자가 모두 대기로 돌아가며, 기록에 남지 않습니다.",
+                            )
+                          )
+                            return;
+                          run(() => cancelGame(game.game.id), "게임을 취소했습니다.", {
+                            optimistic: { type: "end", gameId: game.game.id },
+                          });
+                        }}
+                        className="mt-2 inline-flex w-full items-center justify-center gap-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        <RotateCcw className="size-3.5" />게임 취소 (대기로 되돌리기)
+                      </button>
                     </div>
                   ) : (
                     /* 빈 코트 기본: 직접 배정 | 자동 배정 */

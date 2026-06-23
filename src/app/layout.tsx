@@ -75,6 +75,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full antialiased">
+      <head>
+        {/* Pretendard CDN 폰트 조기 연결(느린 네트워크 체감 개선) */}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster position="top-center" richColors />

@@ -86,6 +86,7 @@ export function ClubSwitcher({
             <img
               src={activeClub.logo_url}
               alt=""
+              decoding="async"
               className="h-7 w-auto max-w-[120px] shrink-0 rounded-md object-contain"
             />
           )}
@@ -105,6 +106,8 @@ export function ClubSwitcher({
                   <img
                     src={club.logo_url}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="h-5 w-auto max-w-[72px] shrink-0 rounded object-contain"
                   />
                 ) : (
