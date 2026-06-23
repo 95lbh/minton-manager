@@ -323,34 +323,44 @@ export function recommendGame(
   const anchors = new Set(locked.map((p) => p.id));
   if (anchors.size === 0 && sorted.length > 0) anchors.add(sorted[0].id);
 
-  // window: 상위 K + anchor 보장
-  const windowSize = Math.min(sorted.length, gameSize + slack);
-  const windowSet = new Map<string, PlayerState>();
-  for (const p of sorted.slice(0, windowSize)) windowSet.set(p.id, p);
-  for (const p of sorted) if (anchors.has(p.id)) windowSet.set(p.id, p);
-  const windowArr = [...windowSet.values()];
-
+  // window: 상위 K + anchor 보장.
+  // 혼복 등에서 현재 window에 유효 조합(성비)이 없으면 window를 넓혀 재시도한다.
+  // (상위 K가 한쪽 성별에 쏠려도, 아래쪽의 다른 성별까지 포함해 가능한 조합을 찾음)
+  let windowSize = Math.min(sorted.length, gameSize + slack);
   let best: ScoredGame | null = null;
-  const scored: ScoredGame[] = [];
+  let scored: ScoredGame[] = [];
 
-  for (const combo of combinations(windowArr, gameSize)) {
-    if (![...anchors].every((id) => combo.some((p) => p.id === id))) continue;
-    if (composition === "mixed" && !isValidMixedCombo(combo)) continue;
+  while (true) {
+    const windowSet = new Map<string, PlayerState>();
+    for (const p of sorted.slice(0, windowSize)) windowSet.set(p.id, p);
+    for (const p of sorted) if (anchors.has(p.id)) windowSet.set(p.id, p);
+    const windowArr = [...windowSet.values()];
 
-    for (const [teamA, teamB] of teamSplits(combo)) {
-      if (composition === "mixed" && !isValidMixedSplit(teamA, teamB)) continue;
-      const breakdown = scoreSplit(teamA, teamB, history, weights, currentSeq);
-      const entry: ScoredGame = {
-        players: combo,
-        split: [teamA, teamB],
-        breakdown,
-      };
-      scored.push(entry);
-      if (!best || breakdown.cost < best.breakdown.cost) best = entry;
+    best = null;
+    scored = [];
+    for (const combo of combinations(windowArr, gameSize)) {
+      if (![...anchors].every((id) => combo.some((p) => p.id === id))) continue;
+      if (composition === "mixed" && !isValidMixedCombo(combo)) continue;
+
+      for (const [teamA, teamB] of teamSplits(combo)) {
+        if (composition === "mixed" && !isValidMixedSplit(teamA, teamB)) continue;
+        const breakdown = scoreSplit(teamA, teamB, history, weights, currentSeq);
+        const entry: ScoredGame = {
+          players: combo,
+          split: [teamA, teamB],
+          breakdown,
+        };
+        scored.push(entry);
+        if (!best || breakdown.cost < best.breakdown.cost) best = entry;
+      }
     }
+
+    // 찾았거나 더 넓힐 수 없으면 종료. 아니면 한 단계(gameSize)씩 확대 재시도.
+    if (best || windowSize >= sorted.length) break;
+    windowSize = Math.min(sorted.length, windowSize + gameSize);
   }
 
-  if (!best) return null; // 주로 mixed 성비 부족
+  if (!best) return null; // 유효 조합이 정말 없음(예: 혼복인데 한쪽 성별 부족)
 
   scored.sort((a, b) => a.breakdown.cost - b.breakdown.cost);
   const chosenIds = new Set(best.players.map((p) => p.id));

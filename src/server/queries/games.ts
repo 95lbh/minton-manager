@@ -9,9 +9,17 @@ export interface PoolPlayer extends PlayerState {
   status: string;
 }
 
+/** 코트 화면에서 쓰는 진행 게임 요약(낙관적 stub도 이 필드만 채우면 됨). */
+export interface OngoingGameInfo {
+  id: string;
+  court_id: string;
+  status: Game["status"];
+  started_at: string;
+}
+
 /** 진행 중인 게임 + 참가자(표시정보). */
 export interface OngoingGameView {
-  game: Game;
+  game: OngoingGameInfo;
   players: {
     attendanceRecordId: string;
     name: string;

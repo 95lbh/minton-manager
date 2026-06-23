@@ -63,7 +63,6 @@ import type {
   PoolPlayer,
   OngoingGameView,
 } from "@/server/queries/games";
-import type { Game } from "@/types/db";
 
 // 코트 화면에 영향을 주는 테이블(실시간 구독 대상).
 const REALTIME_TABLES = [
@@ -111,14 +110,13 @@ function optimisticReducer(
     case "start": {
       const ids = new Set(action.players.map((p) => p.id));
       // 표시에 필요한 필드만 채운 임시 게임(서버 revalidate로 곧 대체됨).
-      const stub = {
-        id: action.gameId,
-        court_id: action.courtId,
-        status: "ongoing",
-        started_at: new Date().toISOString(),
-      } as unknown as Game;
       const game: OngoingGameView = {
-        game: stub,
+        game: {
+          id: action.gameId,
+          court_id: action.courtId,
+          status: "ongoing",
+          started_at: new Date().toISOString(),
+        },
         players: toOngoingPlayers(action.players),
       };
       return {

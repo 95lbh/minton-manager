@@ -165,6 +165,28 @@ describe("혼복(mixed)", () => {
     });
     expect(rec).toBeNull();
   });
+
+  it("혼복: 상위 window가 남성에 쏠려도 window를 넓혀 유효 조합을 찾는다", () => {
+    // 남성 8명(게임 0) 뒤로 여성 2명(게임 9) → 기본 window(8)엔 남성만.
+    const males = Array.from({ length: 8 }, (_, i) =>
+      player(`m${i}`, { gender: "male", gamesPlayed: 0 }),
+    );
+    const females = [
+      player("f1", { gender: "female", gamesPlayed: 9 }),
+      player("f2", { gender: "female", gamesPlayed: 9 }),
+    ];
+    const all = [...males, ...females];
+    const gmap = new Map(all.map((p) => [p.id, p.gender]));
+    const rec = recommendGame(all, EMPTY_HISTORY, {
+      ...baseOptions,
+      composition: "mixed",
+    });
+    expect(rec).not.toBeNull();
+    const fem = rec!.players.filter((id) => gmap.get(id) === "female").length;
+    const mal = rec!.players.filter((id) => gmap.get(id) === "male").length;
+    expect(fem).toBe(2);
+    expect(mal).toBe(2);
+  });
 });
 
 describe("남복/여복 필터", () => {
