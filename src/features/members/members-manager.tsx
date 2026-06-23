@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { GenderToggle, type GenderValue } from "@/components/ui/gender-toggle";
 import { GradeToggle, type GradeValue } from "@/components/ui/grade-toggle";
 import {
@@ -24,7 +31,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { GENDER_LABEL, SKILL_VALUE, GRADE_BY_VALUE } from "@/lib/constants";
+import {
+  GENDER_LABEL,
+  SKILL_VALUE,
+  GRADE_BY_VALUE,
+  SKILL_GRADES,
+} from "@/lib/constants";
 import { PersonAvatar } from "@/components/person-avatar";
 import {
   createMember,
@@ -48,6 +60,43 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [deleting, setDeleting] = useState<ClubMember | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // 검색·필터·정렬·페이지
+  const [query, setQuery] = useState("");
+  const [gFilter, setGFilter] = useState<string>("all"); // all|male|female|other|none
+  const [lFilter, setLFilter] = useState<string>("all"); // all|S..F|none
+  const [sort, setSort] = useState<string>("name"); // name|level|birth
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 30;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = members.filter((m) => {
+      if (q && !m.name.toLowerCase().includes(q)) return false;
+      if (gFilter !== "all") {
+        if (gFilter === "none" ? m.gender != null : m.gender !== gFilter)
+          return false;
+      }
+      if (lFilter !== "all") {
+        const grade = m.level ? GRADE_BY_VALUE[m.level] : "none";
+        if (lFilter === "none" ? m.level != null : grade !== lFilter)
+          return false;
+      }
+      return true;
+    });
+    const sorted = [...list].sort((a, b) => {
+      if (sort === "level") return (b.level ?? 0) - (a.level ?? 0) || a.name.localeCompare(b.name);
+      if (sort === "birth") return (b.birth_year ?? 0) - (a.birth_year ?? 0) || a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name);
+    });
+    return sorted;
+  }, [members, query, gFilter, lFilter, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  // 필터가 바뀌어 페이지 범위를 벗어나면 0으로(렌더 중 setState 대신 파생값 사용).
+  const resetPage = () => setPage(0);
 
   const openCreate = () => {
     setForm(EMPTY);
@@ -108,7 +157,68 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[140px] flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              resetPage();
+            }}
+            placeholder="이름 검색"
+            aria-label="회원 이름 검색"
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={gFilter}
+          onValueChange={(v) => {
+            setGFilter(v ?? "all");
+            resetPage();
+          }}
+        >
+          <SelectTrigger className="w-24" aria-label="성별 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">성별 전체</SelectItem>
+            <SelectItem value="male">남</SelectItem>
+            <SelectItem value="female">여</SelectItem>
+            <SelectItem value="other">기타</SelectItem>
+            <SelectItem value="none">미지정</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={lFilter}
+          onValueChange={(v) => {
+            setLFilter(v ?? "all");
+            resetPage();
+          }}
+        >
+          <SelectTrigger className="w-24" aria-label="등급 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">등급 전체</SelectItem>
+            {SKILL_GRADES.map((g) => (
+              <SelectItem key={g} value={g}>
+                {g}
+              </SelectItem>
+            ))}
+            <SelectItem value="none">미지정</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => setSort(v ?? "name")}>
+          <SelectTrigger className="w-28" aria-label="정렬">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">이름순</SelectItem>
+            <SelectItem value="level">급수순</SelectItem>
+            <SelectItem value="birth">출생년도순</SelectItem>
+          </SelectContent>
+        </Select>
         <Button onClick={openCreate}>
           <Plus className="size-4" />회원 추가
         </Button>
@@ -138,7 +248,17 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
                 </TableCell>
               </TableRow>
             )}
-            {members.map((m) => (
+            {members.length > 0 && filtered.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-sm text-muted-foreground"
+                >
+                  검색 결과가 없습니다.
+                </TableCell>
+              </TableRow>
+            )}
+            {pageRows.map((m) => (
               <TableRow key={m.id}>
                 <TableCell>
                   <div className="flex items-center gap-2.5">
@@ -182,6 +302,34 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
           </TableBody>
         </Table>
       </div>
+
+      {/* 페이지네이션 */}
+      {filtered.length > PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-center gap-3 text-sm">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="이전 페이지"
+            disabled={safePage === 0}
+            onClick={() => setPage(safePage - 1)}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <span className="tabular-nums text-muted-foreground">
+            {safePage + 1} / {pageCount}
+            <span className="ml-2">({filtered.length}명)</span>
+          </span>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="다음 페이지"
+            disabled={safePage >= pageCount - 1}
+            onClick={() => setPage(safePage + 1)}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
 
       {/* 추가/수정 다이얼로그 */}
       <Dialog open={open} onOpenChange={setOpen}>

@@ -162,34 +162,57 @@ export function TournamentManager({
     };
   }, [optMatches]);
 
-  // 최종 순위: 탈락 라운드가 깊을수록 상위. 같은 라운드 탈락은 공동 순위.
+  // 최종 순위: 탈락 라운드가 깊을수록 상위. 같은 라운드 탈락은 직접전→득실→이름으로 가른다.
   const finalStandings = useMemo(() => {
     if (!champion) return [];
-    type U = { key: string; label: string; lostRound: number };
+    type U = { key: string; label: string; lostRound: number; pf: number; pa: number };
     const units = new Map<string, U>();
+    // 직접전(맞대결): winnerKey → loserKey → 승 횟수 (단판에선 드물지만 견고하게)
+    const h2h = new Map<string, Map<string, number>>();
+    const beat = (wk: string, lk: string) => {
+      if (!h2h.has(wk)) h2h.set(wk, new Map());
+      const m = h2h.get(wk)!;
+      m.set(lk, (m.get(lk) ?? 0) + 1);
+    };
     const keyOf = (side: { id: string; name: string }[]) =>
       side.map((p) => p.id).sort().join("+");
     const reg = (side: { id: string; name: string }[]) => {
       if (side.length === 0) return null;
       const k = keyOf(side);
-      if (!units.has(k)) units.set(k, { key: k, label: names(side), lostRound: 0 });
+      if (!units.has(k))
+        units.set(k, { key: k, label: names(side), lostRound: 0, pf: 0, pa: 0 });
       return k;
     };
     for (const m of optMatches) {
       const r = m.round ?? 0;
       const bk = reg(m.blue);
       const wk = reg(m.white);
+      // 득실 누적(점수가 입력된 경기만)
+      if (bk && wk && m.scoreBlue != null && m.scoreWhite != null) {
+        const ub = units.get(bk)!;
+        const uw = units.get(wk)!;
+        ub.pf += m.scoreBlue; ub.pa += m.scoreWhite;
+        uw.pf += m.scoreWhite; uw.pa += m.scoreBlue;
+      }
       const w = winnerSide(m);
       if (!w) continue;
       const loser = w === "blue" ? wk : bk;
+      const winner = w === "blue" ? bk : wk;
       if (loser) units.get(loser)!.lostRound = Math.max(units.get(loser)!.lostRound, r);
+      if (winner && loser) beat(winner, loser);
     }
+    const h2hWins = (x: string, y: string) => h2h.get(x)?.get(y) ?? 0;
     // 챔피언(패배 없음)은 lostRound=0 → 가장 위로(탈락 라운드 큰 순 정렬에서 별도 처리).
     const champKey = [...units.values()].find((u) => u.lostRound === 0)?.key;
     const arr = [...units.values()].sort((a, b) => {
       if (a.key === champKey) return -1;
       if (b.key === champKey) return 1;
-      return b.lostRound - a.lostRound || a.label.localeCompare(b.label);
+      return (
+        b.lostRound - a.lostRound ||
+        h2hWins(b.key, a.key) - h2hWins(a.key, b.key) ||
+        b.pf - b.pa - (a.pf - a.pa) ||
+        a.label.localeCompare(b.label)
+      );
     });
     // 공동 순위 부여
     const counts = new Map<number, number>();

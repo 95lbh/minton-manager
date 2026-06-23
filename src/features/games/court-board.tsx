@@ -61,7 +61,12 @@ import type {
 import type { Game } from "@/types/db";
 
 // 코트 화면에 영향을 주는 테이블(실시간 구독 대상).
-const REALTIME_TABLES = ["games", "game_players", "attendance_records"] as const;
+const REALTIME_TABLES = [
+  "games",
+  "game_players",
+  "attendance_records",
+  "courts",
+] as const;
 
 const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
 
