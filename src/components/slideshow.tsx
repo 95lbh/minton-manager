@@ -42,6 +42,8 @@ export function Slideshow({ slides }: { slides: Slide[] }) {
   // 목표가 바뀌면: 현재를 먼저 페이드아웃 → 교체 → 페이드인 (순차).
   useEffect(() => {
     if (index === display) return;
+    // 의도적 페이드아웃 시작(타이밍 기반 전환 동기화) — 룰 예외.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(false);
     const t = setTimeout(() => {
       setDisplay(index);

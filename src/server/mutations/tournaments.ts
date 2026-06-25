@@ -620,7 +620,7 @@ export async function generateTeamGames(
   const blue = parts.filter((p) => p.team === "blue").map(toSched);
   const white = parts.filter((p) => p.team === "white").map(toSched);
 
-  const { games, reason, maxGames, minGames } = scheduleTeamGames({
+  const { games, reason, maxGames } = scheduleTeamGames({
     blue,
     white,
     perSide,

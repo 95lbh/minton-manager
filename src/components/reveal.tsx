@@ -26,6 +26,8 @@ export function Reveal({
       "(prefers-reduced-motion: reduce)",
     ).matches;
     if (reduce) {
+      // 모션 줄이기 사용자는 애니메이션 없이 즉시 표시 — 룰 예외.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShown(true);
       return;
     }
