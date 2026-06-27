@@ -15,25 +15,18 @@ import {
   removeParticipant,
 } from "@/server/mutations/tournaments";
 import { SKILL_VALUE, GRADE_BY_VALUE, GENDER_LABEL } from "@/lib/constants";
-import type { ClubMember, MemberGender, TournamentParticipant } from "@/types/db";
+import { participantsReducer } from "@/features/tournaments/participants-reducer";
+import type {
+  ClubMember,
+  MemberGender,
+  TournamentParticipant,
+} from "@/types/db";
 
 /** 성별 카드 테두리: 남=하늘, 여=장미, 그 외=기본. */
 function genderBorder(gender: MemberGender | null): string {
   if (gender === "male") return "border-sky-400";
   if (gender === "female") return "border-rose-400";
   return "";
-}
-
-// 낙관적 참가자 목록 갱신(서버 응답 전 즉시 반영, 이후 revalidate로 동기화).
-type PAction =
-  | { type: "add"; participant: TournamentParticipant }
-  | { type: "remove"; id: string };
-function reducer(
-  state: TournamentParticipant[],
-  action: PAction,
-): TournamentParticipant[] {
-  if (action.type === "add") return [...state, action.participant];
-  return state.filter((p) => p.id !== action.id);
 }
 
 export function ParticipantsManager({
@@ -52,7 +45,7 @@ export function ParticipantsManager({
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
   const { pending, run: runAction } = useServerAction();
-  const [optParticipants, apply] = useOptimistic(participants, reducer);
+  const [optParticipants, apply] = useOptimistic(participants, participantsReducer);
   const disabled = pending || locked;
 
   const registeredMemberIds = useMemo(
