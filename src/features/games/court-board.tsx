@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState } from "react";
 import { toast } from "sonner";
 import {
   Sparkles,
   Square,
   Play,
-  X,
   Check,
   Clock,
   Trash2,
@@ -18,13 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,8 +25,6 @@ import {
 import {
   GENDER_LABEL,
   GRADE_BY_VALUE,
-  COMPOSITIONS,
-  COMPOSITION_LABEL,
   DEFAULT_COMPOSITION,
   ATTENDEE_STATUSES,
   ATTENDEE_STATUS_LABEL,
@@ -58,11 +48,14 @@ import {
 } from "@/server/mutations/games";
 import { addCourt, deleteCourt, renameCourt } from "@/server/mutations/courts";
 import { setAttendeeStatus } from "@/server/mutations/attendance";
-import type {
-  CourtViewData,
-  PoolPlayer,
-  OngoingGameView,
-} from "@/server/queries/games";
+import type { CourtViewData, PoolPlayer } from "@/server/queries/games";
+import {
+  optimisticReducer,
+  type OptAction,
+} from "@/features/games/court-board-reducer";
+import { AssignPanel } from "@/features/games/assign-panel";
+import { useServerAction } from "@/hooks/use-server-action";
+import type { ActionResult } from "@/server/types";
 
 // 코트 화면에 영향을 주는 테이블(실시간 구독 대상).
 const REALTIME_TABLES = [
@@ -72,8 +65,6 @@ const REALTIME_TABLES = [
   "courts",
 ] as const;
 
-const SIZE_LABEL: Record<number, string> = { 4: "복식", 2: "단식" };
-
 const STATUS_BADGE: Record<string, string> = {
   present: "",
   lesson: "bg-blue-100 text-blue-700",
@@ -81,67 +72,6 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const avatarCls = genderAvatarClass;
-
-// ── 낙관적 UI ──────────────────────────────────────────────
-// 서버 응답 전에 화면을 즉시 갱신한다. 서버 액션의 revalidate가 돌아오면
-// useOptimistic 이 실제 데이터로 자연 동기화한다.
-type OptAction =
-  | { type: "start"; courtId: string; gameId: string; players: PoolPlayer[] }
-  | { type: "end"; gameId: string }
-  | { type: "status"; recordId: string; status: string };
-
-/** 대기자(PoolPlayer) → 진행중 게임 표시용 플레이어. 앞 절반=1팀, 뒤 절반=2팀. */
-function toOngoingPlayers(players: PoolPlayer[]) {
-  const half = Math.ceil(players.length / 2);
-  return players.map((p, i) => ({
-    attendanceRecordId: p.id,
-    name: p.name,
-    gender: p.gender ?? null,
-    level: p.skill ?? null,
-    team: i < half ? 1 : 2,
-  }));
-}
-
-function optimisticReducer(
-  state: CourtViewData,
-  action: OptAction,
-): CourtViewData {
-  switch (action.type) {
-    case "start": {
-      const ids = new Set(action.players.map((p) => p.id));
-      // 표시에 필요한 필드만 채운 임시 게임(서버 revalidate로 곧 대체됨).
-      const game: OngoingGameView = {
-        game: {
-          id: action.gameId,
-          court_id: action.courtId,
-          status: "ongoing",
-          started_at: new Date().toISOString(),
-        },
-        players: toOngoingPlayers(action.players),
-      };
-      return {
-        ...state,
-        ongoing: [...state.ongoing, game],
-        pool: state.pool.filter((p) => !ids.has(p.id)),
-      };
-    }
-    case "end":
-      // 카드만 즉시 제거. 대기열 복귀는 revalidate가 정확히 채운다.
-      return {
-        ...state,
-        ongoing: state.ongoing.filter((o) => o.game.id !== action.gameId),
-      };
-    case "status":
-      return {
-        ...state,
-        pool: state.pool.map((p) =>
-          p.id === action.recordId ? { ...p, status: action.status } : p,
-        ),
-      };
-    default:
-      return state;
-  }
-}
 
 export function CourtBoard({
   clubId,
@@ -154,7 +84,7 @@ export function CourtBoard({
 }) {
   const [optData, applyOptimistic] = useOptimistic(data, optimisticReducer);
   const { courts, ongoing, pool, currentSeq, history } = optData;
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
 
   // 다른 스태프의 코트 배정·게임·출석 변경을 실시간 반영.
   useRealtimeRefresh(clubId, REALTIME_TABLES);
@@ -209,31 +139,27 @@ export function CourtBoard({
     });
   };
 
+  // 공용 useServerAction에 위임. onStart(패널 닫기 등)·optimistic은 트랜잭션 시작 직후 적용.
   const run = (
-    fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
+    fn: () => Promise<ActionResult>,
     successMsg: string,
     opts?: {
-      /** 즉시(awati 전) 적용할 낙관적 갱신 */
       optimistic?: OptAction;
-      /** 즉시 실행(패널 닫기 등 UI 반응) */
       onStart?: () => void;
-      /** 성공 후 실행 */
       onSuccess?: () => void;
     },
-  ) => {
-    startTransition(async () => {
-      opts?.onStart?.();
-      if (opts?.optimistic) applyOptimistic(opts.optimistic);
-      const res = await fn();
-      if (res.ok) {
-        if (successMsg) toast.success(successMsg);
-        opts?.onSuccess?.();
-        // revalidatePath(서버 액션)로 화면이 자동 갱신되므로 router.refresh() 불필요.
-      } else {
-        toast.error(res.error?.message ?? "오류가 발생했습니다.");
-      }
+  ) =>
+    runAction(fn, {
+      success: successMsg || undefined,
+      optimistic:
+        opts?.onStart || opts?.optimistic
+          ? () => {
+              opts?.onStart?.();
+              if (opts?.optimistic) applyOptimistic(opts.optimistic);
+            }
+          : undefined,
+      onSuccess: opts?.onSuccess,
     });
-  };
 
   /** 자동 추천: 대기중인 사람만으로 후보를 뽑는다. 수정 모드면 현재 멤버도 후보에 포함. */
   const autoFill = (courtId: string, extra: PoolPlayer[] = []) => {
@@ -816,145 +742,3 @@ export function CourtBoard({
   );
 }
 
-/**
- * 배정/수정 패널.
- * - 직접 배정(manual): 단복식 선택 + 수동 탭 선택만 (자동추천/성별구성 없음)
- * - 자동 배정(auto)/수정(edit): 단복식 + 성별구성 셀렉트 + 자동 배정 추천 버튼
- */
-function AssignPanel({
-  isEdit,
-  showAuto,
-  size,
-  comp,
-  selectedIds,
-  poolById,
-  pending,
-  onSizeChange,
-  onCompChange,
-  onAuto,
-  onRemove,
-  onCancel,
-  onSubmit,
-}: {
-  isEdit: boolean;
-  showAuto: boolean;
-  size: GameSize;
-  comp: Composition;
-  selectedIds: string[];
-  poolById: Map<string, PoolPlayer>;
-  pending: boolean;
-  onSizeChange: (s: GameSize) => void;
-  onCompChange: (c: Composition) => void;
-  onAuto: () => void;
-  onRemove: (id: string) => void;
-  onCancel: () => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <div className="flex flex-1 flex-col gap-3">
-      {/* === 위: 선택된 멤버 === */}
-      <div className="text-xs text-muted-foreground">
-        선택 {selectedIds.length}/{size}명 · 왼쪽 대기자에서 탭하여 선택
-      </div>
-
-      {selectedIds.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {selectedIds.map((id) => {
-            const p = poolById.get(id);
-            if (!p) return null;
-            return (
-              <li
-                key={id}
-                className="flex items-center gap-1 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs"
-              >
-                {p.name}
-                <button
-                  type="button"
-                  onClick={() => onRemove(id)}
-                  aria-label={`${p.name} 선택 해제`}
-                  className="rounded-full p-0.5 hover:bg-muted"
-                >
-                  <X className="size-3" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground">
-          선택된 멤버가 없습니다
-        </div>
-      )}
-
-      {/* === 아래: 컨트롤 === */}
-      <div className="mt-auto space-y-2 pt-2">
-        <div className="flex gap-2">
-          <Select
-            value={String(size)}
-            onValueChange={(v) =>
-              onSizeChange((v === "2" ? 2 : DEFAULT_GAME_SIZE) as GameSize)
-            }
-          >
-            <SelectTrigger className="h-9 flex-1">
-              <SelectValue>{SIZE_LABEL[size]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="4">복식 4명</SelectItem>
-              <SelectItem value="2">단식 2명</SelectItem>
-            </SelectContent>
-          </Select>
-          {showAuto && (
-            <Select
-              value={comp}
-              onValueChange={(v) => onCompChange((v ?? "free") as Composition)}
-            >
-              <SelectTrigger className="h-9 flex-1">
-                <SelectValue>{COMPOSITION_LABEL[comp]}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {COMPOSITIONS.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {COMPOSITION_LABEL[c]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        {showAuto && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            onClick={onAuto}
-          >
-            <Sparkles className="size-4" />자동 배정 추천
-          </Button>
-        )}
-
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            취소
-          </Button>
-          <Button
-            size="sm"
-            className="flex-1"
-            disabled={pending || selectedIds.length !== size}
-            onClick={onSubmit}
-          >
-            {isEdit ? (
-              <>
-                <Check className="size-4" />수정 완료
-              </>
-            ) : (
-              <>
-                <Play className="size-4" />시작
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
