@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState } from "react";
+import { useServerAction } from "@/hooks/use-server-action";
 import { toast } from "sonner";
 import { Network, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,7 @@ export function LeagueManager({
   matches: MatchView[];
   locked?: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
   // 점수 입력을 즉시 반영(낙관적). 서버 revalidate 후 props와 동기화.
   const [optMatches, applyScore] = useOptimistic(
     matches,
@@ -147,24 +148,16 @@ export function LeagueManager({
   const generate = () => {
     if (matches.length > 0 && !confirm("다시 생성하면 기존 대진·점수가 새로 만들어집니다. 계속할까요?"))
       return;
-    startTransition(async () => {
-      const res = await generateLeague(tournamentId);
-      if (res.ok) {
-        toast.success("리그 대진을 생성했습니다.");
-        if (res.data) warnExcluded(res.data.excludedNames);
-      } else {
-        toast.error(res.error.message);
-      }
+    runAction(() => generateLeague(tournamentId), {
+      success: "리그 대진을 생성했습니다.",
+      onSuccess: (d) => d && warnExcluded(d.excludedNames),
     });
   };
 
-  const saveResult = (matchId: string, a: number, b: number) => {
-    startTransition(async () => {
-      applyScore({ matchId, a, b });
-      const res = await setMatchResult(matchId, tournamentId, a, b);
-      if (!res.ok) toast.error(res.error.message);
+  const saveResult = (matchId: string, a: number, b: number) =>
+    runAction(() => setMatchResult(matchId, tournamentId, a, b), {
+      optimistic: () => applyScore({ matchId, a, b }),
     });
-  };
 
   const copyResult = () =>
     copyStandings(

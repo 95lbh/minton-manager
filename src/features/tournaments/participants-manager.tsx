@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState } from "react";
+import { useServerAction } from "@/hooks/use-server-action";
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export function ParticipantsManager({
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
   const [optParticipants, apply] = useOptimistic(participants, reducer);
   const disabled = pending || locked;
 
@@ -67,29 +68,31 @@ export function ParticipantsManager({
   }, [members, registeredMemberIds, query]);
 
   // 회원에서 추가 — 낙관적으로 즉시 카드 추가(출석 체크인처럼 빠르게).
-  const addMember = (m: ClubMember) => {
-    startTransition(async () => {
-      apply({
-        type: "add",
-        participant: {
-          id: `temp-${m.id}`,
-          club_id: "",
-          tournament_id: tournamentId,
-          member_id: m.id,
-          name: m.name,
-          gender: m.gender,
-          level: m.level,
-          team: null,
-          seed: null,
-          created_at: new Date().toISOString(),
-        },
-      });
-      const res = await addParticipantsFromMembers(tournamentId, [
-        { id: m.id, name: m.name, gender: m.gender, level: m.level },
-      ]);
-      if (!res.ok) toast.error(res.error.message);
-    });
-  };
+  const addMember = (m: ClubMember) =>
+    runAction(
+      () =>
+        addParticipantsFromMembers(tournamentId, [
+          { id: m.id, name: m.name, gender: m.gender, level: m.level },
+        ]),
+      {
+        optimistic: () =>
+          apply({
+            type: "add",
+            participant: {
+              id: `temp-${m.id}`,
+              club_id: "",
+              tournament_id: tournamentId,
+              member_id: m.id,
+              name: m.name,
+              gender: m.gender,
+              level: m.level,
+              team: null,
+              seed: null,
+              created_at: new Date().toISOString(),
+            },
+          }),
+      },
+    );
 
   const submitGuest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,34 +106,30 @@ export function ParticipantsManager({
     setGuestName("");
     setGuestGender("none");
     setGuestLevel("none");
-    startTransition(async () => {
-      apply({
-        type: "add",
-        participant: {
-          id: `temp-guest-${Date.now()}`,
-          club_id: "",
-          tournament_id: tournamentId,
-          member_id: null,
-          name,
-          gender,
-          level,
-          team: null,
-          seed: null,
-          created_at: new Date().toISOString(),
-        },
-      });
-      const res = await addGuestParticipant(tournamentId, { name, gender, level });
-      if (!res.ok) toast.error(res.error.message);
+    runAction(() => addGuestParticipant(tournamentId, { name, gender, level }), {
+      optimistic: () =>
+        apply({
+          type: "add",
+          participant: {
+            id: `temp-guest-${Date.now()}`,
+            club_id: "",
+            tournament_id: tournamentId,
+            member_id: null,
+            name,
+            gender,
+            level,
+            team: null,
+            seed: null,
+            created_at: new Date().toISOString(),
+          },
+        }),
     });
   };
 
-  const removeP = (id: string) => {
-    startTransition(async () => {
-      apply({ type: "remove", id });
-      const res = await removeParticipant(id, tournamentId);
-      if (!res.ok) toast.error(res.error.message);
+  const removeP = (id: string) =>
+    runAction(() => removeParticipant(id, tournamentId), {
+      optimistic: () => apply({ type: "remove", id }),
     });
-  };
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

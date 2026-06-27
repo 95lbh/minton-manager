@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState } from "react";
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,10 @@ import { GENDER_LABEL, GRADE_BY_VALUE, SKILL_VALUE } from "@/lib/constants";
 import { PersonAvatar } from "@/components/person-avatar";
 import { CheckinQr } from "@/features/attendance/checkin-qr";
 import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
+import { useServerAction } from "@/hooks/use-server-action";
 import type { AttendanceSession, ClubMember } from "@/types/db";
 import type { AttendanceRecordView } from "@/server/queries/attendance";
+import type { ActionResult } from "@/server/types";
 
 const ATTENDANCE_REALTIME_TABLES = ["attendance_records"] as const;
 
@@ -54,7 +56,7 @@ export function AttendanceManager({
   const [guestName, setGuestName] = useState("");
   const [guestGender, setGuestGender] = useState<GenderValue>("none");
   const [guestLevel, setGuestLevel] = useState<GradeValue>("none");
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
   const [optRecords, applyOptimistic] = useOptimistic(records, recordsReducer);
 
   // 다른 스태프의 출석 체크인/취소를 실시간 반영.
@@ -74,20 +76,15 @@ export function AttendanceManager({
       .filter((m) => (q ? m.name.toLowerCase().includes(q) : true));
   }, [members, attendedMemberIds, query]);
 
+  // 공용 useServerAction에 위임(트랜잭션+토스트). 낙관적 갱신만 도메인별로 주입.
   const run = (
-    fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
+    fn: () => Promise<ActionResult>,
     successMsg: string,
     optimistic?: RecAction,
   ) => {
-    startTransition(async () => {
-      if (optimistic) applyOptimistic(optimistic);
-      const res = await fn();
-      if (res.ok) {
-        if (successMsg) toast.success(successMsg);
-        // 서버 액션의 revalidatePath로 자동 갱신 → router.refresh() 불필요.
-      } else {
-        toast.error(res.error?.message ?? "오류가 발생했습니다.");
-      }
+    runAction(fn, {
+      success: successMsg || undefined,
+      optimistic: optimistic ? () => applyOptimistic(optimistic) : undefined,
     });
   };
 

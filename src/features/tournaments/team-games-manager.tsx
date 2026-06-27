@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState } from "react";
+import { useServerAction } from "@/hooks/use-server-action";
 import { toast } from "sonner";
 import { ListChecks, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,7 @@ export function TeamGamesManager({
   locked?: boolean;
 }) {
   const [n, setN] = useState(gamesPerPlayer);
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
   // 점수 입력 즉시 반영(낙관적). 팀 스코어 요약도 함께 갱신.
   const [optMatches, applyScore] = useOptimistic(
     matches,
@@ -151,25 +152,19 @@ export function TeamGamesManager({
       !confirm("다시 편성하면 기존 대진·점수가 모두 새로 만들어집니다. 계속할까요?")
     )
       return;
-    startTransition(async () => {
-      const res = await generateTeamGames(tournamentId, n);
-      if (res.ok) {
-        toast.success("게임을 편성했습니다.");
-        if (res.data) warnExcluded(res.data.excludedNames);
-        if (res.data?.imbalance) toast.warning(res.data.imbalance);
-      } else {
-        toast.error(res.error.message);
-      }
+    runAction(() => generateTeamGames(tournamentId, n), {
+      success: "게임을 편성했습니다.",
+      onSuccess: (d) => {
+        if (d) warnExcluded(d.excludedNames);
+        if (d?.imbalance) toast.warning(d.imbalance);
+      },
     });
   };
 
-  const saveResult = (matchId: string, scoreBlue: number, scoreWhite: number) => {
-    startTransition(async () => {
-      applyScore({ matchId, a: scoreBlue, b: scoreWhite });
-      const res = await setMatchResult(matchId, tournamentId, scoreBlue, scoreWhite);
-      if (!res.ok) toast.error(res.error.message);
+  const saveResult = (matchId: string, scoreBlue: number, scoreWhite: number) =>
+    runAction(() => setMatchResult(matchId, tournamentId, scoreBlue, scoreWhite), {
+      optimistic: () => applyScore({ matchId, a: scoreBlue, b: scoreWhite }),
     });
-  };
 
   const copyResult = () =>
     copyStandings(`[${tournamentName}] 청백전 결과`, [

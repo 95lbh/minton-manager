@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useMemo, useOptimistic, useState } from "react";
+import { useServerAction } from "@/hooks/use-server-action";
+import type { ActionResult } from "@/server/types";
 import { GitFork, Trophy, ChevronRight, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +126,7 @@ export function TournamentManager({
   matches: MatchView[];
   locked?: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, run: runAction } = useServerAction();
   const [seeding, setSeeding] = useState<Seeding>("skill");
   const [manualMode, setManualMode] = useState(false);
   // 점수 입력 즉시 반영(낙관적). 우승자·다음 라운드 가능 여부도 함께 갱신.
@@ -234,31 +235,18 @@ export function TournamentManager({
 
   // 대진 생성/다음 라운드(구조 변경) — revalidate로 갱신, 제외 인원 안내.
   const run = (
-    fn: () => Promise<{
-      ok: boolean;
-      error?: { message: string };
-      data?: { excludedNames?: string[] };
-    }>,
+    fn: () => Promise<ActionResult<{ excludedNames?: string[] }>>,
     msg: string,
-  ) => {
-    startTransition(async () => {
-      const res = await fn();
-      if (res.ok) {
-        toast.success(msg);
-        warnExcluded(res.data?.excludedNames ?? []);
-      } else {
-        toast.error(res.error?.message ?? "오류가 발생했습니다.");
-      }
+  ) =>
+    runAction(fn, {
+      success: msg,
+      onSuccess: (d) => warnExcluded(d?.excludedNames ?? []),
     });
-  };
 
-  const saveResult = (matchId: string, a: number, b: number) => {
-    startTransition(async () => {
-      applyScore({ matchId, a, b });
-      const res = await setMatchResult(matchId, tournamentId, a, b);
-      if (!res.ok) toast.error(res.error.message);
+  const saveResult = (matchId: string, a: number, b: number) =>
+    runAction(() => setMatchResult(matchId, tournamentId, a, b), {
+      optimistic: () => applyScore({ matchId, a, b }),
     });
-  };
 
   const copyResult = () =>
     copyStandings(

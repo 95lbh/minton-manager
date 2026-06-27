@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import {
   updateMember,
   deleteMember,
 } from "@/server/mutations/members";
+import { useServerAction } from "@/hooks/use-server-action";
 import type { ClubMember } from "@/types/db";
 
 interface FormState {
@@ -59,7 +60,7 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [deleting, setDeleting] = useState<ClubMember | null>(null);
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useServerAction();
 
   // 검색·필터·정렬·페이지
   const [query, setQuery] = useState("");
@@ -129,29 +130,19 @@ export function MembersManager({ members }: { members: ClubMember[] }) {
     );
     fd.set("birthYear", form.birthYear.trim());
 
-    startTransition(async () => {
-      const res = form.id ? await updateMember(fd) : await createMember(fd);
-      if (res.ok) {
-        toast.success(form.id ? "수정되었습니다." : "회원이 추가되었습니다.");
-        setOpen(false);
-        // revalidatePath로 목록 자동 갱신 → router.refresh() 불필요.
-      } else {
-        toast.error(res.error.message);
-      }
+    const isEdit = !!form.id;
+    run(() => (isEdit ? updateMember(fd) : createMember(fd)), {
+      success: isEdit ? "수정되었습니다." : "회원이 추가되었습니다.",
+      // revalidatePath로 목록 자동 갱신 → router.refresh() 불필요.
+      onSuccess: () => setOpen(false),
     });
   };
 
   const confirmDelete = () => {
     if (!deleting) return;
-    startTransition(async () => {
-      const res = await deleteMember(deleting.id);
-      if (res.ok) {
-        toast.success("삭제되었습니다.");
-        setDeleting(null);
-        // revalidatePath로 목록 자동 갱신 → router.refresh() 불필요.
-      } else {
-        toast.error(res.error.message);
-      }
+    run(() => deleteMember(deleting.id), {
+      success: "삭제되었습니다.",
+      onSuccess: () => setDeleting(null),
     });
   };
 
