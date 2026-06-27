@@ -2,38 +2,12 @@
 
 import { useMemo, useOptimistic, useState } from "react";
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
 import {
-  Sparkles,
-  Square,
-  Play,
-  Check,
-  Clock,
-  Trash2,
-  Plus,
-  Pencil,
-  Users,
-  RotateCcw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  GENDER_LABEL,
-  GRADE_BY_VALUE,
   DEFAULT_COMPOSITION,
-  ATTENDEE_STATUSES,
   ATTENDEE_STATUS_LABEL,
   type Composition,
-  type AttendeeStatus,
 } from "@/lib/constants";
-import { ElapsedTime } from "@/features/games/elapsed-time";
-import { WaitTime } from "@/features/games/wait-time";
-import { genderAvatarClass } from "@/components/person-avatar";
 import { useRealtimeRefresh } from "@/hooks/use-realtime-refresh";
 import {
   recommendGame,
@@ -53,7 +27,8 @@ import {
   optimisticReducer,
   type OptAction,
 } from "@/features/games/court-board-reducer";
-import { AssignPanel } from "@/features/games/assign-panel";
+import { PoolSection } from "@/features/games/pool-section";
+import { CourtCard } from "@/features/games/court-card";
 import { useServerAction } from "@/hooks/use-server-action";
 import type { ActionResult } from "@/server/types";
 
@@ -65,13 +40,8 @@ const REALTIME_TABLES = [
   "courts",
 ] as const;
 
-const STATUS_BADGE: Record<string, string> = {
-  present: "",
-  lesson: "bg-blue-100 text-blue-700",
-  left: "bg-zinc-200 text-zinc-600",
-};
-
-const avatarCls = genderAvatarClass;
+// 빈 Set 상수(코트 패널 미열림 시 PoolSection에 안정적으로 전달).
+const EMPTY_SET: Set<string> = new Set();
 
 export function CourtBoard({
   clubId,
@@ -253,212 +223,36 @@ export function CourtBoard({
     return locked;
   };
 
-  // 성별 분리 + 정렬: 대기중 먼저, 그 안에서 오래 기다린 순(waitingSince 오름차순)
-  const { malePool, femalePool, otherPool } = useMemo(() => {
-    const byWait = (a: PoolPlayer, b: PoolPlayer) => {
-      const ap = a.status === "present" ? 0 : 1;
-      const bp = b.status === "present" ? 0 : 1;
-      return ap - bp || (a.waitingSince ?? 0) - (b.waitingSince ?? 0);
-    };
-    return {
-      malePool: pool.filter((p) => p.gender === "male").sort(byWait),
-      femalePool: pool.filter((p) => p.gender === "female").sort(byWait),
-      otherPool: pool
-        .filter((p) => p.gender !== "male" && p.gender !== "female")
-        .sort(byWait),
-    };
-  }, [pool]);
-
-  /** 대기자 카드 하나(선택 모드면 탭 선택, 평소엔 상태 변경 드롭다운). */
-  const renderPoolItem = (p: PoolPlayer) => {
-    const activeCourt = openCourt;
-    const isPresent = p.status === "present";
-    const selectedHere = activeCourt ? selOf(activeCourt).has(p.id) : false;
-    const locked = activeCourt ? lockedElsewhere(activeCourt).has(p.id) : false;
-    const selectMode = !!activeCourt && (isPresent || selectedHere) && !locked;
-
-    const statusBadge =
-      p.status !== "present" ? (
-        <span
-          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_BADGE[p.status] ?? ""}`}
-        >
-          {ATTENDEE_STATUS_LABEL[p.status as AttendeeStatus] ?? p.status}
-        </span>
-      ) : null;
-
-    const content = (
-      <>
-        <div className="flex items-center gap-1.5">
-          <div
-            className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${avatarCls(p.gender)}`}
-          >
-            {p.skill ? GRADE_BY_VALUE[p.skill] : "·"}
-          </div>
-          <span className="min-w-0 flex-1 truncate font-semibold leading-tight">
-            {p.name}
-            {p.isGuest && (
-              <span className="ml-0.5 text-xs font-medium text-amber-600">G</span>
-            )}
-          </span>
-          {selectedHere && <Check className="size-4 shrink-0 text-primary" />}
-        </div>
-        <div className="flex items-center justify-between gap-1 pl-0.5">
-          <span className="truncate text-[11px] text-muted-foreground">
-            {p.skill ? `${GRADE_BY_VALUE[p.skill]} · ` : ""}
-            {p.gamesPlayed}게임
-          </span>
-          {isPresent ? (
-            p.waitingSince ? (
-              <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                <WaitTime since={p.waitingSince} />
-              </span>
-            ) : null
-          ) : (
-            statusBadge
-          )}
-        </div>
-      </>
-    );
-
-    const baseCls = [
-      "flex w-full flex-col gap-1 rounded-lg border p-2 text-left text-sm transition-all",
-      selectedHere
-        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-        : "bg-background hover:bg-muted/60",
-      !isPresent && !selectedHere ? "opacity-60" : "",
-      locked && activeCourt ? "opacity-40" : "",
-    ].join(" ");
-
-    if (activeCourt) {
-      return (
-        <li key={p.id}>
-          <button
-            type="button"
-            disabled={!selectMode}
-            onClick={() => toggleSelect(activeCourt, p.id)}
-            className={`${baseCls} ${selectMode ? "cursor-pointer" : "cursor-default"}`}
-          >
-            {content}
-          </button>
-        </li>
-      );
-    }
-
-    return (
-      <li key={p.id}>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            disabled={pending}
-            aria-label={`${p.name} 상태 변경`}
-            className={`${baseCls} disabled:opacity-50`}
-          >
-            {content}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {ATTENDEE_STATUSES.map((s) => (
-              <DropdownMenuItem
-                key={s}
-                onClick={() =>
-                  run(
-                    () => setAttendeeStatus(p.id, s),
-                    `${p.name} · ${ATTENDEE_STATUS_LABEL[s]}`,
-                    { optimistic: { type: "status", recordId: p.id, status: s } },
-                  )
-                }
-              >
-                {ATTENDEE_STATUS_LABEL[s]}
-                {p.status === s && (
-                  <Check className="ml-auto size-4 text-primary" />
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </li>
-    );
-  };
-
-  // 성별 컬럼(남/여) 한 개 렌더
-  const genderColumn = (
-    label: string,
-    items: PoolPlayer[],
-    dotCls: string,
-  ) => (
-    <div className="min-w-0">
-      <div className="mb-1.5 flex items-center gap-1.5 px-0.5">
-        <span className={`size-2 rounded-full ${dotCls}`} />
-        <span className="text-xs font-semibold text-muted-foreground">
-          {label} {items.length}
-        </span>
-      </div>
-      {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed py-3 text-center text-[11px] text-muted-foreground">
-          없음
-        </p>
-      ) : (
-        <ul className="space-y-2">{items.map(renderPoolItem)}</ul>
-      )}
-    </div>
-  );
+  // 코트 이름 편집 종료(상태에서 해당 코트 키 제거).
+  const clearRenaming = (courtId: string) =>
+    setRenaming((p) => {
+      const n = { ...p };
+      delete n[courtId];
+      return n;
+    });
 
   return (
     // 드래그로 코트 배정하는 영역 → 탭 스와이프 이동에서 제외.
     <div data-no-swipe className="grid gap-5 lg:grid-cols-12 lg:items-start">
-      {/* === 좌측: 대기자 큐 (모바일에선 코트 아래로) === */}
-      <aside className="order-2 lg:order-1 lg:col-span-4 lg:sticky lg:top-4">
-        <div className="flex flex-col rounded-xl border-2 border-primary/25 bg-card">
-          <div className="border-b p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold tracking-tight">
-                대기자 <span className="text-primary">{availablePool.length}</span>
-                <span className="text-muted-foreground">/{pool.length}</span>
-              </h2>
-              <Users className="size-4 text-muted-foreground" />
-            </div>
-            {openCourt && (
-              <p className="mt-1 text-xs font-medium text-primary">
-                선택 모드 · 대기자를 눌러 코트에 배정하세요
-              </p>
-            )}
-          </div>
+      {/* 좌측: 대기자 큐 */}
+      <PoolSection
+        pool={pool}
+        availableCount={availablePool.length}
+        panelOpen={openCourt !== null}
+        selectedIds={openCourt ? selOf(openCourt) : EMPTY_SET}
+        lockedIds={openCourt ? lockedElsewhere(openCourt) : EMPTY_SET}
+        pending={pending}
+        onToggleSelect={(id) => openCourt && toggleSelect(openCourt, id)}
+        onSetStatus={(p, s) =>
+          run(
+            () => setAttendeeStatus(p.id, s),
+            `${p.name} · ${ATTENDEE_STATUS_LABEL[s]}`,
+            { optimistic: { type: "status", recordId: p.id, status: s } },
+          )
+        }
+      />
 
-          <div className="p-3">
-            {pool.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                출석한 사람이 없습니다.
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  {genderColumn("남", malePool, "bg-sky-500")}
-                  {genderColumn("여", femalePool, "bg-rose-500")}
-                </div>
-                {otherPool.length > 0 && (
-                  <div className="mt-3">
-                    <div className="mb-1.5 flex items-center gap-1.5 px-0.5">
-                      <span className="size-2 rounded-full bg-muted-foreground/40" />
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        성별 미지정 {otherPool.length}
-                      </span>
-                    </div>
-                    <ul className="grid grid-cols-2 gap-2">
-                      {otherPool.map(renderPoolItem)}
-                    </ul>
-                  </div>
-                )}
-              </>
-            )}
-            {!openCourt && availablePool.length > 0 && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                대기자를 누르면 상태(대기중/레슨중/집에감)를 바꿀 수 있습니다.
-                오래 기다린 순으로 정렬됩니다.
-              </p>
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* === 우측: 코트 그리드 === */}
+      {/* 우측: 코트 그리드 */}
       <div className="order-1 lg:order-2 lg:col-span-8">
         {courts.length === 0 && (
           <div className="mb-4 rounded-xl border border-dashed bg-muted/30 p-6 text-center">
@@ -473,256 +267,80 @@ export function CourtBoard({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {courts.map((court) => {
             const game = ongoingByCourt.get(court.id);
-            const isOpen = openCourt === court.id;
-            const isRenaming = renaming[court.id] !== undefined;
-
             return (
-              <div
+              <CourtCard
                 key={court.id}
-                className={[
-                  "flex flex-col overflow-hidden rounded-xl bg-card transition-all",
-                  isOpen
-                    ? "border border-primary shadow-sm ring-1 ring-primary/30"
-                    : game
-                      ? "border shadow-sm"
-                      : "border-2 border-dashed",
-                ].join(" ")}
-              >
-                {/* 헤더: 이름(+편집) / 상태배지 / 액션 */}
-                <div
-                  className={`flex items-center justify-between gap-2 px-4 py-3 ${game || isOpen ? "border-b" : ""} ${game ? "bg-muted/30" : ""}`}
-                >
-                  {isRenaming ? (
-                    <form
-                      className="flex flex-1 gap-1"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        run(
-                          () => renameCourt(court.id, renaming[court.id]),
-                          "코트 이름을 변경했습니다.",
-                          {
-                            onSuccess: () =>
-                              setRenaming((p) => {
-                                const n = { ...p };
-                                delete n[court.id];
-                                return n;
-                              }),
-                          },
-                        );
-                      }}
-                    >
-                      <Input
-                        value={renaming[court.id]}
-                        onChange={(e) =>
-                          setRenaming((p) => ({
-                            ...p,
-                            [court.id]: e.target.value,
-                          }))
-                        }
-                        className="h-8"
-                        autoFocus
-                        maxLength={30}
-                      />
-                      <Button type="submit" size="sm" disabled={pending}>
-                        저장
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setRenaming((p) => {
-                            const n = { ...p };
-                            delete n[court.id];
-                            return n;
-                          })
-                        }
-                      >
-                        취소
-                      </Button>
-                    </form>
-                  ) : (
-                    <>
-                      <h3 className="min-w-0 truncate font-bold tracking-tight">
-                        {court.name}
-                      </h3>
-                      <div className="flex items-center gap-1">
-                        {game ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                            <span className="size-1.5 animate-pulse rounded-full bg-accent" />
-                            진행중
-                          </span>
-                        ) : !isOpen ? (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            비어 있음
-                          </span>
-                        ) : null}
-                        {!isOpen && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() =>
-                                setRenaming((p) => ({
-                                  ...p,
-                                  [court.id]: court.name,
-                                }))
-                              }
-                              className="rounded-md p-2 text-muted-foreground hover:bg-muted disabled:opacity-50"
-                              aria-label="코트 수정"
-                            >
-                              <Pencil className="size-4" />
-                            </button>
-                            {!game && (
-                              <button
-                                type="button"
-                                disabled={pending}
-                                onClick={() =>
-                                  run(
-                                    () => deleteCourt(court.id),
-                                    "코트를 삭제했습니다.",
-                                  )
-                                }
-                                className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-50"
-                                aria-label="코트 삭제"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* 본문 */}
-                <div className="flex flex-1 flex-col p-4">
-                  {isOpen ? (
-                    <AssignPanel
-                      isEdit={openMode === "edit"}
-                      showAuto={openMode !== "manual"}
-                      size={sizeOf(court.id)}
-                      comp={compOf(court.id)}
-                      selectedIds={[...selOf(court.id)]}
-                      poolById={poolById}
-                      pending={pending}
-                      onSizeChange={(s) =>
-                        setGameSize((p) => ({ ...p, [court.id]: s }))
-                      }
-                      onCompChange={(c) =>
-                        setComposition((p) => ({ ...p, [court.id]: c }))
-                      }
-                      onAuto={() =>
-                        autoFill(
-                          court.id,
-                          openMode === "edit" && game
-                            ? game.players
-                                .map((pl) => poolById.get(pl.attendanceRecordId))
-                                .filter((x): x is PoolPlayer => !!x)
-                            : [],
-                        )
-                      }
-                      onRemove={(id) => toggleSelect(court.id, id)}
-                      onCancel={() => closePanel(court.id)}
-                      onSubmit={() =>
-                        openMode === "edit" && game
-                          ? saveEdit(court.id, game.game.id)
-                          : start(court.id)
-                      }
-                    />
-                  ) : game ? (
-                    /* 게임 중 */
-                    <div className="flex flex-1 flex-col">
-                      <div className="mb-3 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <Clock className="size-3.5" />
-                        <ElapsedTime startedAt={game.game.started_at} />
-                      </div>
-                      <div className="grid flex-1 grid-cols-2 gap-2">
-                        {game.players.map((p) => (
-                          <div
-                            key={p.attendanceRecordId}
-                            className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-2"
-                          >
-                            <div
-                              className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${avatarCls(p.gender)}`}
-                            >
-                              {p.level ? GRADE_BY_VALUE[p.level] : "·"}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold leading-tight">
-                                {p.name}
-                              </p>
-                              <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                                {p.gender ? GENDER_LABEL[p.gender] : ""}
-                                {p.level ? ` · ${GRADE_BY_VALUE[p.level]}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          disabled={pending}
-                          onClick={() => openEdit(court.id, game)}
-                        >
-                          <Pencil className="size-4" />멤버 수정
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          disabled={pending}
-                          onClick={() =>
-                            run(() => endGame(game.game.id), "게임을 종료했습니다.", {
-                              optimistic: { type: "end", gameId: game.game.id },
-                            })
-                          }
-                        >
-                          <Square className="size-4" />종료
-                        </Button>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => {
-                          if (
-                            !confirm(
-                              "이 게임을 취소할까요? 참가자가 모두 대기로 돌아가며, 기록에 남지 않습니다.",
-                            )
-                          )
-                            return;
-                          run(() => cancelGame(game.game.id), "게임을 취소했습니다.", {
-                            optimistic: { type: "end", gameId: game.game.id },
-                          });
-                        }}
-                        className="mt-2 inline-flex w-full items-center justify-center gap-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
-                      >
-                        <RotateCcw className="size-3.5" />게임 취소 (대기로 되돌리기)
-                      </button>
-                    </div>
-                  ) : (
-                    /* 빈 코트 기본: 직접 배정 | 자동 배정 */
-                    <div className="flex flex-1 flex-col justify-center gap-3 py-6">
-                      <p className="text-center text-sm text-muted-foreground">
-                        배정 대기 중
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button onClick={() => openAssign(court.id, "manual")}>
-                          <Play className="size-4" />직접 배정
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => openAssign(court.id, "auto")}
-                        >
-                          <Sparkles className="size-4" />자동 배정
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                court={court}
+                game={game}
+                isOpen={openCourt === court.id}
+                openMode={openMode}
+                renamingValue={renaming[court.id]}
+                size={sizeOf(court.id)}
+                comp={compOf(court.id)}
+                selectedIds={[...selOf(court.id)]}
+                poolById={poolById}
+                pending={pending}
+                onRenameStart={() =>
+                  setRenaming((p) => ({ ...p, [court.id]: court.name }))
+                }
+                onRenameChange={(v) =>
+                  setRenaming((p) => ({ ...p, [court.id]: v }))
+                }
+                onRenameCancel={() => clearRenaming(court.id)}
+                onRenameSubmit={() =>
+                  run(
+                    () => renameCourt(court.id, renaming[court.id]),
+                    "코트 이름을 변경했습니다.",
+                    { onSuccess: () => clearRenaming(court.id) },
+                  )
+                }
+                onDelete={() =>
+                  run(() => deleteCourt(court.id), "코트를 삭제했습니다.")
+                }
+                onEdit={() => game && openEdit(court.id, game)}
+                onOpenAssign={(mode) => openAssign(court.id, mode)}
+                onEndGame={() =>
+                  game &&
+                  run(() => endGame(game.game.id), "게임을 종료했습니다.", {
+                    optimistic: { type: "end", gameId: game.game.id },
+                  })
+                }
+                onCancelGame={() => {
+                  if (!game) return;
+                  if (
+                    !confirm(
+                      "이 게임을 취소할까요? 참가자가 모두 대기로 돌아가며, 기록에 남지 않습니다.",
+                    )
+                  )
+                    return;
+                  run(() => cancelGame(game.game.id), "게임을 취소했습니다.", {
+                    optimistic: { type: "end", gameId: game.game.id },
+                  });
+                }}
+                onSizeChange={(s) =>
+                  setGameSize((p) => ({ ...p, [court.id]: s }))
+                }
+                onCompChange={(c) =>
+                  setComposition((p) => ({ ...p, [court.id]: c }))
+                }
+                onAuto={() =>
+                  autoFill(
+                    court.id,
+                    openMode === "edit" && game
+                      ? game.players
+                          .map((pl) => poolById.get(pl.attendanceRecordId))
+                          .filter((x): x is PoolPlayer => !!x)
+                      : [],
+                  )
+                }
+                onRemoveSelected={(id) => toggleSelect(court.id, id)}
+                onClosePanel={() => closePanel(court.id)}
+                onSubmit={() =>
+                  openMode === "edit" && game
+                    ? saveEdit(court.id, game.game.id)
+                    : start(court.id)
+                }
+              />
             );
           })}
 
